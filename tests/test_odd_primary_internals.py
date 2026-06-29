@@ -3,7 +3,8 @@ import types
 
 from fastop import spaces
 from fastop._odd_primary.indices import OperationIndex
-from fastop._odd_primary.reference import cochain_operation_vector
+from fastop._odd_primary.reference import cochain_operation_vector, universal_operation
+from fastop._odd_primary.universal import UniversalOperation
 
 
 def test_operation_index_translates_fastop_to_oddp_conventions():
@@ -45,3 +46,41 @@ def test_reference_bridge_returns_fastop_sparse_vector(monkeypatch):
     assert complex_by_degree[4] == set(complex_.faces(4))
     assert cochain == {(1,): 1}
     assert (p, s, q, bockstein, algorithm) == (3, -1, 0, False, "direct")
+
+
+def test_universal_operation_reduces_coefficients():
+    index = OperationIndex(p=3, r=1, source_degree=2)
+    universal = UniversalOperation.from_terms(
+        index,
+        {
+            ((0, 1, 2), (2, 3, 4), (4, 5, 6)): 5,
+            ((0,), (1,), (2,)): 3,
+        },
+    )
+
+    assert universal.p == 3
+    assert universal.r == 1
+    assert universal.source_degree == 2
+    assert universal.target_degree == 6
+    assert universal.missing_vertices_per_factor == 4
+    assert universal.terms == {((0, 1, 2), (2, 3, 4), (4, 5, 6)): 2}
+
+
+def test_reference_bridge_builds_universal_operation(monkeypatch):
+    calls = []
+
+    class FakeSteenrod:
+        @staticmethod
+        def chain_operations(p, s, q, *, bockstein):
+            calls.append((p, s, q, bockstein))
+            return {((0, 1), (1, 2), (0, 2)): 4}
+
+    fake_oddp = types.ModuleType("oddp")
+    fake_oddp.Steenrod = FakeSteenrod
+    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
+
+    universal = universal_operation(OperationIndex(p=3, r=0, source_degree=1, bockstein=True))
+
+    assert calls == [(3, 0, -1, True)]
+    assert universal.target_degree == 2
+    assert universal.terms == {((0, 1), (1, 2), (0, 2)): 1}
