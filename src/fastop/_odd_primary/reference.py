@@ -21,7 +21,24 @@ def cochain_operation_vector(
     *,
     algorithm: str,
 ) -> Vector:
-    """Apply the current oddp implementation and return a target-degree vector."""
+    """Build universal data and evaluate it natively."""
+    return cochain_operation_vector_from_universal(
+        complex_,
+        cochain,
+        universal_operation(index),
+        target_face_to_index,
+    )
+
+
+def cochain_operation_vector_oddp(
+    complex_: "SimplicialComplex",
+    cochain: dict["Simplex", int],
+    index: OperationIndex,
+    target_face_to_index: dict["Simplex", int],
+    *,
+    algorithm: str,
+) -> Vector:
+    """Apply oddp's cochain evaluator directly for comparison tests."""
     Steenrod = _load_steenrod()
 
     result = Steenrod.cochain_operation(

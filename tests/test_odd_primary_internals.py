@@ -6,6 +6,7 @@ from fastop._odd_primary.evaluate import evaluate_all_targets
 from fastop._odd_primary.indices import OperationIndex
 from fastop._odd_primary.reference import (
     cochain_operation_vector,
+    cochain_operation_vector_oddp,
     cochain_operation_vector_from_universal,
     universal_operation,
 )
@@ -21,7 +22,7 @@ def test_operation_index_translates_fastop_to_oddp_conventions():
     assert index.target_degree == 20
 
 
-def test_reference_bridge_returns_fastop_sparse_vector(monkeypatch):
+def test_reference_oddp_cochain_bridge_returns_fastop_sparse_vector(monkeypatch):
     complex_ = spaces.complex_projective_plane()
     target_faces = sorted(complex_.faces(4))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
@@ -38,7 +39,7 @@ def test_reference_bridge_returns_fastop_sparse_vector(monkeypatch):
     fake_oddp.Steenrod = FakeSteenrod
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
-    vector = cochain_operation_vector(
+    vector = cochain_operation_vector_oddp(
         complex_,
         {(1,): 1},
         OperationIndex(p=3, r=1, source_degree=0),
@@ -51,6 +52,35 @@ def test_reference_bridge_returns_fastop_sparse_vector(monkeypatch):
     assert complex_by_degree[4] == set(complex_.faces(4))
     assert cochain == {(1,): 1}
     assert (p, s, q, bockstein, algorithm) == (3, -1, 0, False, "direct")
+
+
+def test_reference_bridge_uses_universal_data_and_native_evaluator(monkeypatch):
+    complex_ = spaces.complex_projective_plane()
+    target_faces = sorted(complex_.faces(4))
+    target_face_to_index = {face: i for i, face in enumerate(target_faces)}
+    target = target_faces[0]
+    calls = []
+
+    class FakeSteenrod:
+        @staticmethod
+        def chain_operations(p, s, q, *, bockstein):
+            calls.append((p, s, q, bockstein))
+            return {tuple((i,) for i in range(5)): 2}
+
+    fake_oddp = types.ModuleType("oddp")
+    fake_oddp.Steenrod = FakeSteenrod
+    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
+
+    vector = cochain_operation_vector(
+        complex_,
+        {vertex: 1 for vertex in zip(target)},
+        OperationIndex(p=3, r=1, source_degree=0),
+        target_face_to_index,
+        algorithm="ignored",
+    )
+
+    assert vector == {target_face_to_index[target]: 2}
+    assert calls == [(3, -1, 0, False)]
 
 
 def test_universal_operation_reduces_coefficients():

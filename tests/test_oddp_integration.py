@@ -6,7 +6,7 @@ import pytest
 from fastop import spaces
 from fastop._odd_primary.indices import OperationIndex
 from fastop._odd_primary.reference import (
-    cochain_operation_vector,
+    cochain_operation_vector_oddp,
     cochain_operation_vector_from_universal,
     universal_operation,
 )
@@ -66,7 +66,7 @@ def test_all_targets_evaluator_matches_oddp_direct_on_cp3_generator():
         cochain,
         universal,
         target_data.face_to_index,
-    ) == cochain_operation_vector(
+    ) == cochain_operation_vector_oddp(
         complex_,
         cochain,
         index,
@@ -88,7 +88,7 @@ def test_all_targets_evaluator_matches_oddp_direct_on_moore_bockstein():
         cochain,
         universal,
         target_data.face_to_index,
-    ) == cochain_operation_vector(
+    ) == cochain_operation_vector_oddp(
         complex_,
         cochain,
         index,
