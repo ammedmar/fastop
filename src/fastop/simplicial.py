@@ -1,0 +1,63 @@
+"""Finite simplicial complexes."""
+
+from dataclasses import dataclass
+from itertools import combinations
+from typing import Iterable
+
+Simplex = tuple[int, ...]
+
+
+def _normalize_simplex(simplex: Iterable[int]) -> Simplex:
+    vertices = tuple(sorted(simplex))
+    if len(vertices) != len(set(vertices)):
+        raise ValueError("simplices cannot contain repeated vertices")
+    return vertices
+
+
+@dataclass(frozen=True)
+class SimplicialComplex:
+    """A finite abstract simplicial complex.
+
+    The complex is created from facets. All non-empty faces are generated
+    automatically and stored by dimension.
+    """
+
+    facets: frozenset[Simplex]
+
+    def __init__(self, facets: Iterable[Iterable[int]]):
+        normalized = frozenset(_normalize_simplex(facet) for facet in facets)
+        if not normalized:
+            raise ValueError("a simplicial complex needs at least one facet")
+        if any(not facet for facet in normalized):
+            raise ValueError("facets must be non-empty")
+        object.__setattr__(self, "facets", normalized)
+        object.__setattr__(self, "_faces_by_dimension", self._build_faces())
+
+    @classmethod
+    def from_facets(cls, facets: Iterable[Iterable[int]]) -> "SimplicialComplex":
+        """Create a complex from maximal or non-maximal listed simplices."""
+        return cls(facets)
+
+    @property
+    def dimension(self) -> int:
+        """Return the largest simplex dimension."""
+        return max(self._faces_by_dimension)
+
+    @property
+    def vertices(self) -> tuple[int, ...]:
+        """Return the vertices in increasing order."""
+        return tuple(sorted({vertex for facet in self.facets for vertex in facet}))
+
+    def faces(self, dimension: int | None = None) -> dict[int, frozenset[Simplex]] | frozenset[Simplex]:
+        """Return faces, either all by dimension or in one dimension."""
+        if dimension is None:
+            return dict(self._faces_by_dimension)
+        return self._faces_by_dimension.get(dimension, frozenset())
+
+    def _build_faces(self) -> dict[int, frozenset[Simplex]]:
+        faces: dict[int, set[Simplex]] = {}
+        for facet in self.facets:
+            for size in range(1, len(facet) + 1):
+                dimension = size - 1
+                faces.setdefault(dimension, set()).update(combinations(facet, size))
+        return {dimension: frozenset(values) for dimension, values in faces.items()}
