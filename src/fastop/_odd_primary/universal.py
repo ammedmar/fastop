@@ -42,3 +42,20 @@ class UniversalOperation:
             missing_vertices_per_factor=index.missing_vertices_per_factor,
             terms=reduced_terms,
         )
+
+
+def native_universal_operation(index: OperationIndex) -> UniversalOperation | None:
+    """Return native universal data when the operation family is implemented."""
+    if index.bockstein:
+        return None
+    if index.r <= 0 or index.source_degree != 2 * index.r:
+        return None
+
+    factor_length = index.source_degree + 1
+    step = index.source_degree
+    tensor = tuple(
+        tuple(range(step * factor, step * factor + factor_length))
+        for factor in range(index.p)
+    )
+    coefficient = (-1) ** index.r
+    return UniversalOperation.from_terms(index, {tensor: coefficient})

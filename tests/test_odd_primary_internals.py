@@ -10,7 +10,7 @@ from fastop._odd_primary.reference import (
     cochain_operation_vector_from_universal,
     universal_operation,
 )
-from fastop._odd_primary.universal import UniversalOperation
+from fastop._odd_primary.universal import UniversalOperation, native_universal_operation
 
 
 def test_operation_index_translates_fastop_to_oddp_conventions():
@@ -119,6 +119,29 @@ def test_reference_bridge_builds_universal_operation(monkeypatch):
     assert calls == [(3, 0, -1, True)]
     assert universal.target_degree == 2
     assert universal.terms == {((0, 1), (1, 2), (0, 2)): 1}
+
+
+def test_native_universal_operation_builds_top_reduced_power_family():
+    assert native_universal_operation(
+        OperationIndex(p=3, r=1, source_degree=2)
+    ).terms == {((0, 1, 2), (2, 3, 4), (4, 5, 6)): 2}
+    assert native_universal_operation(
+        OperationIndex(p=5, r=1, source_degree=2)
+    ).terms == {
+        ((0, 1, 2), (2, 3, 4), (4, 5, 6), (6, 7, 8), (8, 9, 10)): 4
+    }
+    assert native_universal_operation(
+        OperationIndex(p=3, r=2, source_degree=4)
+    ).terms == {
+        ((0, 1, 2, 3, 4), (4, 5, 6, 7, 8), (8, 9, 10, 11, 12)): 1
+    }
+
+
+def test_native_universal_operation_leaves_unimplemented_families_to_reference():
+    assert native_universal_operation(
+        OperationIndex(p=3, r=0, source_degree=1, bockstein=True)
+    ) is None
+    assert native_universal_operation(OperationIndex(p=3, r=1, source_degree=3)) is None
 
 
 def test_all_targets_evaluator_applies_tensor_terms():

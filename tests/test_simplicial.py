@@ -114,6 +114,15 @@ def test_odd_primary_operation_uses_universal_data_and_projects(monkeypatch):
     assert cohomology.operation_rank(1, 0, bockstein=True, algorithm="direct") == 1
 
 
+def test_top_reduced_power_does_not_require_oddp(monkeypatch):
+    cohomology = spaces.complex_projective_space(3).cohomology(p=3)
+    x = cohomology.basis(2)[0]
+    fake_oddp = types.ModuleType("oddp")
+    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
+
+    assert x.operation(1) == cohomology.basis(6)[0]
+
+
 def test_odd_primary_operation_uses_oddp_universal_conventions(monkeypatch):
     cohomology = spaces.complex_projective_plane().cohomology(p=5)
     one = cohomology.basis(0)[0]

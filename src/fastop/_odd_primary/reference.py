@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from fastop._odd_primary.evaluate import evaluate_all_targets
 from fastop._odd_primary.indices import OperationIndex
-from fastop._odd_primary.universal import UniversalOperation
+from fastop._odd_primary.universal import UniversalOperation, native_universal_operation
 from fastop._prime_field import Vector
 
 if TYPE_CHECKING:
@@ -58,7 +58,11 @@ def cochain_operation_vector_oddp(
 
 
 def universal_operation(index: OperationIndex) -> UniversalOperation:
-    """Build universal tensor data using the current oddp implementation."""
+    """Build universal tensor data, falling back to oddp when needed."""
+    native = native_universal_operation(index)
+    if native is not None:
+        return native
+
     Steenrod = _load_steenrod()
     tensor_chain = Steenrod.chain_operations(
         index.p,
