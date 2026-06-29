@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from itertools import combinations
 from typing import TYPE_CHECKING
 
+from fastop._odd_primary.indices import OperationIndex
+from fastop._odd_primary.reference import cochain_operation_vector
 from fastop._prime_field import (
     CoordinateBasis,
     Vector,
@@ -262,7 +264,7 @@ class PrimeFieldCohomology:
             if bockstein:
                 raise NotImplementedError("Bockstein operations require an odd prime")
             return degree + r
-        return degree + 2 * r * (self.p - 1) + int(bockstein)
+        return OperationIndex(self.p, r, degree, bockstein).target_degree
 
     def _odd_primary_operation_homogeneous(
         self,
@@ -273,35 +275,21 @@ class PrimeFieldCohomology:
         bockstein: bool,
         algorithm: str,
     ) -> "PrimeFieldCohomologyElement":
-        target_degree = degree + 2 * r * (self.p - 1) + int(bockstein)
+        index = OperationIndex(self.p, r, degree, bockstein)
+        target_degree = index.target_degree
         target_data = self._degree_data.get(target_degree)
         if target_data is None:
             return self.zero()
         if r == 0 and not bockstein:
             return self.element({degree: element._coordinates.get(degree, {})})
 
-        try:
-            from oddp import Steenrod
-        except ImportError as exc:
-            raise ImportError(
-                "oddp is required for odd-primary Steenrod operations; "
-                "install oddp or add it to PYTHONPATH"
-            ) from exc
-
-        result = Steenrod.cochain_operation(
-            _complex_for_oddp(self.complex),
+        target_vector = cochain_operation_vector(
+            self.complex,
             self.cocycle(element, degree),
-            self.p,
-            -r,
-            -degree,
-            bockstein=bockstein,
+            index,
+            target_data.face_to_index,
             algorithm=algorithm,
         )
-        target_vector = {
-            target_data.face_to_index[simplex]: coefficient % self.p
-            for simplex, coefficient in result.items()
-            if coefficient % self.p
-        }
         return self.project_cocycle(target_degree, target_vector)
 
     def _build_boundary_columns(self) -> dict[int, list[Vector]]:
@@ -473,13 +461,6 @@ def _codimension_one_faces(simplex: "Simplex", p: int) -> tuple[tuple[int, "Simp
 
 def _vector_sort_key(vector: Vector) -> tuple[tuple[int, int], ...]:
     return tuple(sorted(vector.items()))
-
-
-def _complex_for_oddp(complex_: "SimplicialComplex") -> dict[int, set["Simplex"]]:
-    return {
-        degree: set(complex_.faces(degree))
-        for degree in range(complex_.dimension + 1)
-    }
 
 
 def _steenrod_square_support(
