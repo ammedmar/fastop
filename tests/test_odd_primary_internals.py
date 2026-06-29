@@ -2,8 +2,13 @@ import sys
 import types
 
 from fastop import spaces
+from fastop._odd_primary.evaluate import evaluate_all_targets
 from fastop._odd_primary.indices import OperationIndex
-from fastop._odd_primary.reference import cochain_operation_vector, universal_operation
+from fastop._odd_primary.reference import (
+    cochain_operation_vector,
+    cochain_operation_vector_from_universal,
+    universal_operation,
+)
 from fastop._odd_primary.universal import UniversalOperation
 
 
@@ -84,3 +89,45 @@ def test_reference_bridge_builds_universal_operation(monkeypatch):
     assert calls == [(3, 0, -1, True)]
     assert universal.target_degree == 2
     assert universal.terms == {((0, 1), (1, 2), (0, 2)): 1}
+
+
+def test_all_targets_evaluator_applies_tensor_terms():
+    universal = UniversalOperation(
+        p=3,
+        r=1,
+        source_degree=0,
+        bockstein=False,
+        target_degree=2,
+        missing_vertices_per_factor=2,
+        terms={((0,), (1,), (2,)): 2},
+    )
+
+    assert evaluate_all_targets(
+        {(1, 2, 3), (1, 2, 4)},
+        {(1,): 1, (2,): 2, (3,): 1, (4,): 0},
+        universal,
+    ) == {(1, 2, 3): 1}
+
+
+def test_reference_vector_from_universal_uses_native_evaluator():
+    complex_ = spaces.complex_projective_plane()
+    target_faces = sorted(complex_.faces(4))
+    target_face_to_index = {face: i for i, face in enumerate(target_faces)}
+    target = target_faces[0]
+    universal = UniversalOperation(
+        p=3,
+        r=1,
+        source_degree=0,
+        bockstein=False,
+        target_degree=4,
+        missing_vertices_per_factor=4,
+        terms={tuple((i,) for i in range(5)): 1},
+    )
+    cochain = {vertex: 1 for vertex in zip(target)}
+
+    assert cochain_operation_vector_from_universal(
+        complex_,
+        cochain,
+        universal,
+        target_face_to_index,
+    ) == {target_face_to_index[target]: 1}

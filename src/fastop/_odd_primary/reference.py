@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from fastop._odd_primary.evaluate import evaluate_all_targets
 from fastop._odd_primary.indices import OperationIndex
 from fastop._odd_primary.universal import UniversalOperation
 from fastop._prime_field import Vector
@@ -49,6 +50,24 @@ def universal_operation(index: OperationIndex) -> UniversalOperation:
         bockstein=index.bockstein,
     )
     return UniversalOperation.from_terms(index, dict(tensor_chain))
+
+
+def cochain_operation_vector_from_universal(
+    complex_: "SimplicialComplex",
+    cochain: dict["Simplex", int],
+    universal: UniversalOperation,
+    target_face_to_index: dict["Simplex", int],
+) -> Vector:
+    """Evaluate universal data natively and return a target-degree vector."""
+    result = evaluate_all_targets(
+        complex_.faces(universal.target_degree),
+        cochain,
+        universal,
+    )
+    return {
+        target_face_to_index[simplex]: coefficient
+        for simplex, coefficient in result.items()
+    }
 
 
 def _load_steenrod():
