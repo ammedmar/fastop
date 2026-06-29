@@ -1,3 +1,6 @@
+import sys
+import types
+
 import pytest
 
 from fastop import SimplicialComplex, __version__, spaces
@@ -73,14 +76,75 @@ def test_mod_p_class_arithmetic_uses_plain_int_coefficients():
     assert (2 * x)._coordinates == {2: {0: 2}}
 
 
-def test_steenrod_squares_are_only_available_mod_two():
+def test_steenrod_square_spelling_is_only_available_mod_two():
     cohomology = spaces.complex_projective_plane().cohomology(p=3)
     x = cohomology.basis(2)[0]
 
     with pytest.raises(NotImplementedError, match="p=2"):
         x.sq(2)
-    with pytest.raises(NotImplementedError, match="p=2"):
-        cohomology.operation_rank(2, 2)
+
+
+def test_bockstein_operations_are_only_available_at_odd_primes():
+    cohomology = spaces.complex_projective_plane().cohomology()
+    x = cohomology.basis(2)[0]
+
+    with pytest.raises(NotImplementedError, match="odd prime"):
+        x.operation(1, bockstein=True)
+    with pytest.raises(NotImplementedError, match="odd prime"):
+        cohomology.operation_rank(2, 1, bockstein=True)
+
+
+def test_odd_primary_operation_uses_oddp_and_projects(monkeypatch):
+    cohomology = spaces.complex_projective_plane().cohomology(p=3)
+    one = cohomology.basis(0)[0]
+    top_cocycle = cohomology.basis(4)[0].cocycle()
+    calls = []
+
+    class FakeSteenrod:
+        @staticmethod
+        def cochain_operation(complex_, cochain, p, s, q, *, bockstein, algorithm):
+            calls.append((complex_, cochain, p, s, q, bockstein, algorithm))
+            return top_cocycle
+
+    fake_oddp = types.ModuleType("oddp")
+    fake_oddp.Steenrod = FakeSteenrod
+    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
+
+    assert one.operation(1, algorithm="direct") == cohomology.basis(4)[0]
+    complex_, cochain, p, s, q, bockstein, algorithm = calls[0]
+    assert complex_[4] == set(cohomology.complex.faces(4))
+    assert cochain == one.cocycle()
+    assert (p, s, q, bockstein, algorithm) == (3, -1, 0, False, "direct")
+    assert cohomology.operation_rank(0, 1, algorithm="direct") == 1
+
+
+def test_odd_primary_operation_uses_oddp_bockstein_conventions(monkeypatch):
+    cohomology = spaces.complex_projective_plane().cohomology(p=5)
+    one = cohomology.basis(0)[0]
+    calls = []
+
+    class FakeSteenrod:
+        @staticmethod
+        def cochain_operation(complex_, cochain, p, s, q, *, bockstein, algorithm):
+            calls.append((p, s, q, bockstein, algorithm))
+            return {}
+
+    fake_oddp = types.ModuleType("oddp")
+    fake_oddp.Steenrod = FakeSteenrod
+    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
+
+    assert one.operation(0, bockstein=True, algorithm="support").is_zero()
+    assert calls == [(5, 0, 0, True, "support")]
+    assert cohomology.operation_rank(0, 0, bockstein=True) == 0
+
+
+def test_odd_primary_vanishing_target_degree_does_not_require_oddp(monkeypatch):
+    cohomology = spaces.complex_projective_plane().cohomology(p=3)
+    x = cohomology.basis(2)[0]
+    monkeypatch.delitem(sys.modules, "oddp", raising=False)
+
+    assert x.operation(1).is_zero()
+    assert cohomology.operation_rank(2, 1) == 0
 
 
 def test_basis_elements_have_python_style_squares():
@@ -118,6 +182,29 @@ def test_complex_projective_plane_betti_numbers_and_sq2():
     assert cohomology.basis(2)[0].sq(2) == cohomology.basis(4)[0]
 
 
+def test_complex_projective_space_catalog_includes_cp2_and_cp3():
+    cp2 = spaces.complex_projective_space(2)
+    cp3 = spaces.complex_projective_space(3)
+
+    assert cp2 == spaces.complex_projective_plane()
+    assert cp3.dimension == 6
+    assert len(cp3.vertices) == 18
+    assert len(cp3.facets) == 622
+
+
+def test_moore_space_catalog_includes_mod_three_example():
+    moore = spaces.moore_space(3)
+
+    assert moore.dimension == 2
+    assert len(moore.vertices) == 9
+    assert len(moore.facets) == 19
+    assert moore.cohomology(p=3).betti_numbers() == {0: 1, 1: 1, 2: 1}
+
+
 def test_space_catalog_rejects_unknown_projective_spaces():
     with pytest.raises(NotImplementedError, match="dimensions 2 and 3"):
         spaces.real_projective_space(4)
+    with pytest.raises(NotImplementedError, match="dimensions 2 and 3"):
+        spaces.complex_projective_space(4)
+    with pytest.raises(NotImplementedError, match="mod-3"):
+        spaces.moore_space(5)

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from itertools import combinations
 
+from fastop._space_data import (
+    _COMPLEX_PROJECTIVE_3_SPACE_FACETS,
+    _MOORE_3_SPACE_FACETS,
+)
 from fastop.simplicial import SimplicialComplex
 
 
@@ -41,6 +45,25 @@ def real_projective_space(dimension: int) -> SimplicialComplex:
 def complex_projective_plane() -> SimplicialComplex:
     """Return Sage's nine-vertex triangulation of complex projective plane."""
     return SimplicialComplex(_COMPLEX_PROJECTIVE_PLANE_FACETS)
+
+
+def complex_projective_space(dimension: int) -> SimplicialComplex:
+    """Return a catalog triangulation of complex projective ``dimension``-space."""
+    _validate_dimension(dimension)
+    if dimension == 2:
+        return complex_projective_plane()
+    if dimension == 3:
+        return SimplicialComplex(_COMPLEX_PROJECTIVE_3_SPACE_FACETS)
+    raise NotImplementedError("only complex projective spaces of dimensions 2 and 3 are included")
+
+
+def moore_space(order: int = 3) -> SimplicialComplex:
+    """Return a catalog triangulation of the mod-``order`` Moore space."""
+    if not isinstance(order, int) or isinstance(order, bool):
+        raise TypeError("order must be an integer")
+    if order != 3:
+        raise NotImplementedError("only the mod-3 Moore space is included")
+    return SimplicialComplex(_MOORE_3_SPACE_FACETS)
 
 
 def _validate_dimension(dimension: int) -> None:

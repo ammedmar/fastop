@@ -155,18 +155,74 @@ class PrimeFieldCohomology:
             answer += self._square_homogeneous(element, degree, k)
         return answer
 
-    def operation_matrix(self, degree: int, k: int) -> list[Vector]:
-        """Return columns of ``Sq^k: H^degree -> H^(degree+k)``."""
+    def operation(
+        self,
+        element: "PrimeFieldCohomologyElement",
+        r: int,
+        *,
+        bockstein: bool = False,
+        algorithm: str = "support",
+    ) -> "PrimeFieldCohomologyElement":
+        """Apply the Steenrod operation selected by the coefficient prime."""
+        self._validate_operation_index(r)
+        if not isinstance(bockstein, bool):
+            raise TypeError("bockstein must be a boolean")
+        if self.p == 2:
+            if bockstein:
+                raise NotImplementedError("Bockstein operations require an odd prime")
+            return self.square(element, r)
+
+        answer = self.zero()
+        for degree in sorted(element._coordinates):
+            answer += self._odd_primary_operation_homogeneous(
+                element,
+                degree,
+                r,
+                bockstein=bockstein,
+                algorithm=algorithm,
+            )
+        return answer
+
+    def operation_matrix(
+        self,
+        degree: int,
+        r: int,
+        *,
+        bockstein: bool = False,
+        algorithm: str = "support",
+    ) -> list[Vector]:
+        """Return columns of the selected Steenrod operation from ``H^degree``."""
+        self._validate_operation_index(r)
+        if not isinstance(bockstein, bool):
+            raise TypeError("bockstein must be a boolean")
+        target_degree = self._operation_target_degree(degree, r, bockstein=bockstein)
         return [
-            basis_element.sq(k)._coordinates.get(degree + k, {})
+            basis_element.operation(
+                r,
+                bockstein=bockstein,
+                algorithm=algorithm,
+            )._coordinates.get(target_degree, {})
             for basis_element in self.basis(degree)
         ]
 
-    def operation_rank(self, degree: int, k: int) -> int:
-        """Return the rank of ``Sq^k: H^degree -> H^(degree+k)``."""
-        if self.p != 2:
-            raise NotImplementedError("Steenrod squares are only implemented for p=2")
-        return rank(self.operation_matrix(degree, k), self.p)
+    def operation_rank(
+        self,
+        degree: int,
+        r: int,
+        *,
+        bockstein: bool = False,
+        algorithm: str = "support",
+    ) -> int:
+        """Return the rank of the selected Steenrod operation from ``H^degree``."""
+        return rank(
+            self.operation_matrix(
+                degree,
+                r,
+                bockstein=bockstein,
+                algorithm=algorithm,
+            ),
+            self.p,
+        )
 
     def _square_homogeneous(
         self, element: "PrimeFieldCohomologyElement", degree: int, k: int
@@ -192,6 +248,59 @@ class PrimeFieldCohomology:
         target_vector = {
             target_data.face_to_index[simplex]: 1
             for simplex in target_support
+        }
+        return self.project_cocycle(target_degree, target_vector)
+
+    def _validate_operation_index(self, r: int) -> None:
+        if not isinstance(r, int) or isinstance(r, bool):
+            raise TypeError("r must be an integer")
+        if r < 0:
+            raise ValueError("r must be nonnegative")
+
+    def _operation_target_degree(self, degree: int, r: int, *, bockstein: bool) -> int:
+        if self.p == 2:
+            if bockstein:
+                raise NotImplementedError("Bockstein operations require an odd prime")
+            return degree + r
+        return degree + 2 * r * (self.p - 1) + int(bockstein)
+
+    def _odd_primary_operation_homogeneous(
+        self,
+        element: "PrimeFieldCohomologyElement",
+        degree: int,
+        r: int,
+        *,
+        bockstein: bool,
+        algorithm: str,
+    ) -> "PrimeFieldCohomologyElement":
+        target_degree = degree + 2 * r * (self.p - 1) + int(bockstein)
+        target_data = self._degree_data.get(target_degree)
+        if target_data is None:
+            return self.zero()
+        if r == 0 and not bockstein:
+            return self.element({degree: element._coordinates.get(degree, {})})
+
+        try:
+            from oddp import Steenrod
+        except ImportError as exc:
+            raise ImportError(
+                "oddp is required for odd-primary Steenrod operations; "
+                "install oddp or add it to PYTHONPATH"
+            ) from exc
+
+        result = Steenrod.cochain_operation(
+            _complex_for_oddp(self.complex),
+            self.cocycle(element, degree),
+            self.p,
+            -r,
+            -degree,
+            bockstein=bockstein,
+            algorithm=algorithm,
+        )
+        target_vector = {
+            target_data.face_to_index[simplex]: coefficient % self.p
+            for simplex, coefficient in result.items()
+            if coefficient % self.p
         }
         return self.project_cocycle(target_degree, target_vector)
 
@@ -269,6 +378,21 @@ class PrimeFieldCohomologyElement:
     def sq(self, k: int) -> "PrimeFieldCohomologyElement":
         """Return ``Sq^k`` applied to this cohomology element."""
         return self.parent.square(self, k)
+
+    def operation(
+        self,
+        r: int,
+        *,
+        bockstein: bool = False,
+        algorithm: str = "support",
+    ) -> "PrimeFieldCohomologyElement":
+        """Return the Steenrod operation selected by the coefficient prime."""
+        return self.parent.operation(
+            self,
+            r,
+            bockstein=bockstein,
+            algorithm=algorithm,
+        )
 
     def cocycle(self, degree: int | None = None):
         """Return the chosen representative cocycle of a homogeneous element."""
@@ -349,6 +473,13 @@ def _codimension_one_faces(simplex: "Simplex", p: int) -> tuple[tuple[int, "Simp
 
 def _vector_sort_key(vector: Vector) -> tuple[tuple[int, int], ...]:
     return tuple(sorted(vector.items()))
+
+
+def _complex_for_oddp(complex_: "SimplicialComplex") -> dict[int, set["Simplex"]]:
+    return {
+        degree: set(complex_.faces(degree))
+        for degree in range(complex_.dimension + 1)
+    }
 
 
 def _steenrod_square_support(
