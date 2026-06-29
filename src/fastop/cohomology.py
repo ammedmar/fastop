@@ -1,4 +1,4 @@
-"""Cohomology over the field with two elements."""
+"""Cohomology over finite prime fields."""
 
 from __future__ import annotations
 
@@ -6,7 +6,17 @@ from dataclasses import dataclass
 from itertools import combinations
 from typing import TYPE_CHECKING
 
-from fastop._f2 import CoordinateBasis, iter_bits, nullspace, rank, rref
+from fastop._prime_field import (
+    CoordinateBasis,
+    Vector,
+    clean_vector,
+    is_prime,
+    nullspace,
+    rank,
+    rref,
+    vector_add,
+    vector_scale,
+)
 
 if TYPE_CHECKING:
     from fastop.simplicial import Simplex, SimplicialComplex
@@ -16,16 +26,24 @@ if TYPE_CHECKING:
 class _DegreeData:
     faces: tuple["Simplex", ...]
     face_to_index: dict["Simplex", int]
-    cocycle_basis: tuple[int, ...]
+    cocycle_basis: tuple[Vector, ...]
     projector: CoordinateBasis
 
 
-class Mod2Cohomology:
-    """Mod-2 cohomology of a finite simplicial complex."""
+class PrimeFieldCohomology:
+    """Cohomology of a finite simplicial complex over ``F_p``."""
 
-    def __init__(self, complex_: "SimplicialComplex", *, reduced: bool = False):
+    def __init__(
+        self,
+        complex_: "SimplicialComplex",
+        p: int = 2,
+        *,
+        reduced: bool = False,
+    ):
+        if not is_prime(p):
+            raise ValueError("p must be a prime")
         self.complex = complex_
-        self.p = 2
+        self.p = p
         self.reduced = reduced
         self._faces = {
             degree: tuple(sorted(complex_.faces(degree)))
@@ -48,58 +66,72 @@ class Mod2Cohomology:
         """Return cohomology basis elements, optionally in one degree."""
         if degree is None:
             return tuple(
-                self.element({n: 1 << i})
+                self.element({n: {i: 1}})
                 for n in range(self.dimension + 1)
                 for i in range(self.betti_number(n))
             )
-        return tuple(self.element({degree: 1 << i}) for i in range(self.betti_number(degree)))
+        return tuple(self.element({degree: {i: 1}}) for i in range(self.betti_number(degree)))
 
     def betti_number(self, degree: int) -> int:
-        """Return the mod-2 Betti number in ``degree``."""
+        """Return the mod-``p`` Betti number in ``degree``."""
         data = self._degree_data.get(degree)
         if data is None:
             return 0
         return len(data.cocycle_basis)
 
     def betti_numbers(self) -> dict[int, int]:
-        """Return all nonzero mod-2 Betti numbers."""
+        """Return all nonzero mod-``p`` Betti numbers."""
         return {
             degree: betti
             for degree in range(self.dimension + 1)
             if (betti := self.betti_number(degree))
         }
 
-    def zero(self) -> "Mod2CohomologyElement":
+    def __repr__(self) -> str:
+        return (
+            f"PrimeFieldCohomology(p={self.p}, "
+            f"dimension={self.dimension}, "
+            f"betti_numbers={self.betti_numbers()})"
+        )
+
+    def zero(self) -> "PrimeFieldCohomologyElement":
         """Return the zero cohomology element."""
         return self.element({})
 
-    def element(self, coordinates: dict[int, int]) -> "Mod2CohomologyElement":
-        """Create a cohomology element from degree-index bit coordinates."""
+    def element(self, coordinates: dict[int, Vector]) -> "PrimeFieldCohomologyElement":
+        """Create a cohomology element from degree-index coordinates."""
         clean = {}
         for degree, vector in coordinates.items():
-            mask = (1 << self.betti_number(degree)) - 1
-            vector &= mask
-            if vector:
-                clean[degree] = vector
-        return Mod2CohomologyElement(self, clean)
+            dimension = self.betti_number(degree)
+            reduced = {
+                index: coefficient % self.p
+                for index, coefficient in vector.items()
+                if 0 <= index < dimension and coefficient % self.p
+            }
+            if reduced:
+                clean[degree] = reduced
+        return PrimeFieldCohomologyElement(self, clean)
 
-    def cocycle_vector(self, element: "Mod2CohomologyElement", degree: int) -> int:
+    def cocycle_vector(
+        self, element: "PrimeFieldCohomologyElement", degree: int
+    ) -> Vector:
         """Return the representative cocycle vector for one homogeneous part."""
-        vector = 0
+        vector: Vector = {}
         data = self._degree_data[degree]
-        coordinates = element._coordinates.get(degree, 0)
-        for index in iter_bits(coordinates):
-            vector ^= data.cocycle_basis[index]
+        coordinates = element._coordinates.get(degree, {})
+        for index, coefficient in coordinates.items():
+            vector = vector_add(vector, data.cocycle_basis[index], self.p, coefficient)
         return vector
 
-    def cocycle(self, element: "Mod2CohomologyElement", degree: int):
+    def cocycle(self, element: "PrimeFieldCohomologyElement", degree: int):
         """Return the representative cocycle as a simplex-to-coefficient dict."""
         data = self._degree_data[degree]
         vector = self.cocycle_vector(element, degree)
-        return {data.faces[index]: 1 for index in iter_bits(vector)}
+        return {data.faces[index]: coefficient for index, coefficient in sorted(vector.items())}
 
-    def project_cocycle(self, degree: int, vector: int) -> "Mod2CohomologyElement":
+    def project_cocycle(self, degree: int, vector: Vector) -> "PrimeFieldCohomologyElement":
         """Project a cocycle vector to cohomology coordinates."""
+        vector = clean_vector(vector, self.p)
         data = self._degree_data.get(degree)
         if data is None:
             if vector:
@@ -107,8 +139,13 @@ class Mod2Cohomology:
             return self.zero()
         return self.element({degree: data.projector.coordinates(vector)})
 
-    def square(self, element: "Mod2CohomologyElement", k: int) -> "Mod2CohomologyElement":
-        """Apply the Steenrod square ``Sq^k``."""
+    def square(self, element: "PrimeFieldCohomologyElement", k: int) -> "PrimeFieldCohomologyElement":
+        """Apply the Steenrod square ``Sq^k``.
+
+        Steenrod squares are only available over ``F_2``.
+        """
+        if self.p != 2:
+            raise NotImplementedError("Steenrod squares are only implemented for p=2")
         if not isinstance(k, int) or isinstance(k, bool):
             raise TypeError("k must be an integer")
         if k < 0:
@@ -118,22 +155,24 @@ class Mod2Cohomology:
             answer += self._square_homogeneous(element, degree, k)
         return answer
 
-    def operation_matrix(self, degree: int, k: int) -> list[int]:
-        """Return the columns of ``Sq^k: H^degree -> H^(degree+k)``."""
-        columns = []
-        for basis_element in self.basis(degree):
-            columns.append(basis_element.sq(k)._coordinates.get(degree + k, 0))
-        return columns
+    def operation_matrix(self, degree: int, k: int) -> list[Vector]:
+        """Return columns of ``Sq^k: H^degree -> H^(degree+k)``."""
+        return [
+            basis_element.sq(k)._coordinates.get(degree + k, {})
+            for basis_element in self.basis(degree)
+        ]
 
     def operation_rank(self, degree: int, k: int) -> int:
         """Return the rank of ``Sq^k: H^degree -> H^(degree+k)``."""
-        return rank(self.operation_matrix(degree, k))
+        if self.p != 2:
+            raise NotImplementedError("Steenrod squares are only implemented for p=2")
+        return rank(self.operation_matrix(degree, k), self.p)
 
     def _square_homogeneous(
-        self, element: "Mod2CohomologyElement", degree: int, k: int
-    ) -> "Mod2CohomologyElement":
+        self, element: "PrimeFieldCohomologyElement", degree: int, k: int
+    ) -> "PrimeFieldCohomologyElement":
         if k == 0:
-            return self.element({degree: element._coordinates.get(degree, 0)})
+            return self.element({degree: element._coordinates.get(degree, {})})
         if k > degree:
             return self.zero()
 
@@ -144,47 +183,46 @@ class Mod2Cohomology:
 
         source_data = self._degree_data[degree]
         cocycle_vector = self.cocycle_vector(element, degree)
-        support = [source_data.faces[index] for index in iter_bits(cocycle_vector)]
+        support = [source_data.faces[index] for index in cocycle_vector]
         target_support = _steenrod_square_support(
             target_degree + 1,
             support,
             set(target_data.faces),
         )
-        target_vector = 0
-        for simplex in target_support:
-            target_vector ^= 1 << target_data.face_to_index[simplex]
+        target_vector = {
+            target_data.face_to_index[simplex]: 1
+            for simplex in target_support
+        }
         return self.project_cocycle(target_degree, target_vector)
 
-    def _build_boundary_columns(self) -> dict[int, list[int]]:
-        columns: dict[int, list[int]] = {0: [0 for _ in self._faces.get(0, ())]}
+    def _build_boundary_columns(self) -> dict[int, list[Vector]]:
+        columns: dict[int, list[Vector]] = {0: [{} for _ in self._faces.get(0, ())]}
         for degree in range(1, self.dimension + 1):
             lower_index = self._face_to_index[degree - 1]
             degree_columns = []
             for simplex in self._faces[degree]:
-                column = 0
-                for face in _codimension_one_faces(simplex):
-                    column ^= 1 << lower_index[face]
-                degree_columns.append(column)
+                column = {}
+                for sign, face in _codimension_one_faces(simplex, self.p):
+                    column[lower_index[face]] = (column.get(lower_index[face], 0) + sign) % self.p
+                degree_columns.append(clean_vector(column, self.p))
             columns[degree] = degree_columns
         return columns
 
-    def _build_coboundary_columns(self) -> dict[int, list[int]]:
+    def _build_coboundary_columns(self) -> dict[int, list[Vector]]:
         columns = {}
         for degree in range(self.dimension + 1):
             domain_faces = self._faces.get(degree, ())
-            target_faces = self._faces.get(degree + 1, ())
             degree_columns = []
             for domain_index in range(len(domain_faces)):
-                column = 0
+                column = {}
                 for target_index, boundary in enumerate(
                     self._boundary_columns.get(degree + 1, ())
                 ):
-                    if (boundary >> domain_index) & 1:
-                        column |= 1 << target_index
-                degree_columns.append(column)
+                    coefficient = boundary.get(domain_index, 0)
+                    if coefficient:
+                        column[target_index] = coefficient
+                degree_columns.append(clean_vector(column, self.p))
             columns[degree] = degree_columns
-            if not target_faces:
-                columns[degree] = [0 for _ in domain_faces]
         return columns
 
     def _build_degree_data(self) -> dict[int, _DegreeData]:
@@ -192,18 +230,18 @@ class Mod2Cohomology:
         for degree in range(self.dimension + 1):
             faces = self._faces[degree]
             coboundary = self._coboundary_columns[degree]
-            cycles = nullspace(coboundary, len(self._faces.get(degree + 1, ())))
-            boundary_vectors = list(rref(self._coboundary_columns.get(degree - 1, [])).values())
+            cycles = nullspace(coboundary, len(self._faces.get(degree + 1, ())), self.p)
+            boundary_vectors = list(rref(self._coboundary_columns.get(degree - 1, []), self.p).values())
             if self.reduced and degree == 0 and faces:
-                boundary_vectors.append((1 << len(faces)) - 1)
+                boundary_vectors.append({index: 1 for index in range(len(faces))})
 
-            projector = CoordinateBasis()
+            projector = CoordinateBasis(self.p)
             for boundary in boundary_vectors:
-                projector.add(boundary, 0)
+                projector.add(boundary, {})
 
             cocycle_basis = []
-            for cycle in sorted(cycles):
-                basis_coordinate = 1 << len(cocycle_basis)
+            for cycle in sorted(cycles, key=_vector_sort_key):
+                basis_coordinate = {len(cocycle_basis): 1}
                 if projector.add(cycle, basis_coordinate):
                     cocycle_basis.append(cycle)
 
@@ -216,14 +254,19 @@ class Mod2Cohomology:
         return all_data
 
 
-class Mod2CohomologyElement:
-    """An element of a mod-2 cohomology vector space."""
+class PrimeFieldCohomologyElement:
+    """An element of a cohomology vector space over ``F_p``."""
 
-    def __init__(self, parent: Mod2Cohomology, coordinates: dict[int, int]):
+    def __init__(self, parent: PrimeFieldCohomology, coordinates: dict[int, Vector]):
         self.parent = parent
-        self._coordinates = dict(coordinates)
+        self._coordinates = {degree: dict(vector) for degree, vector in coordinates.items()}
 
-    def sq(self, k: int) -> "Mod2CohomologyElement":
+    @property
+    def p(self) -> int:
+        """Return the characteristic."""
+        return self.parent.p
+
+    def sq(self, k: int) -> "PrimeFieldCohomologyElement":
         """Return ``Sq^k`` applied to this cohomology element."""
         return self.parent.square(self, k)
 
@@ -243,21 +286,35 @@ class Mod2CohomologyElement:
         """Return whether this is the zero element."""
         return not self._coordinates
 
-    def __add__(self, other: "Mod2CohomologyElement") -> "Mod2CohomologyElement":
+    def __add__(self, other: "PrimeFieldCohomologyElement") -> "PrimeFieldCohomologyElement":
         if self.parent is not other.parent:
             return NotImplemented
-        coordinates = dict(self._coordinates)
+        coordinates = {degree: dict(vector) for degree, vector in self._coordinates.items()}
         for degree, vector in other._coordinates.items():
-            coordinates[degree] = coordinates.get(degree, 0) ^ vector
+            coordinates[degree] = vector_add(coordinates.get(degree, {}), vector, self.p)
             if not coordinates[degree]:
                 del coordinates[degree]
         return self.parent.element(coordinates)
 
-    __sub__ = __add__
+    def __sub__(self, other: "PrimeFieldCohomologyElement") -> "PrimeFieldCohomologyElement":
+        if self.parent is not other.parent:
+            return NotImplemented
+        coordinates = {degree: dict(vector) for degree, vector in self._coordinates.items()}
+        for degree, vector in other._coordinates.items():
+            coordinates[degree] = vector_add(coordinates.get(degree, {}), vector, self.p, -1)
+            if not coordinates[degree]:
+                del coordinates[degree]
+        return self.parent.element(coordinates)
+
+    def __rmul__(self, scalar: int) -> "PrimeFieldCohomologyElement":
+        return self.parent.element({
+            degree: vector_scale(vector, scalar, self.p)
+            for degree, vector in self._coordinates.items()
+        })
 
     def __eq__(self, other) -> bool:
         return (
-            isinstance(other, Mod2CohomologyElement)
+            isinstance(other, PrimeFieldCohomologyElement)
             and self.parent is other.parent
             and self._coordinates == other._coordinates
         )
@@ -270,13 +327,28 @@ class Mod2CohomologyElement:
             return "0"
         terms = []
         for degree in sorted(self._coordinates):
-            for index in iter_bits(self._coordinates[degree]):
-                terms.append(f"h^{degree},{index}")
+            for index, coefficient in sorted(self._coordinates[degree].items()):
+                basis = f"h^{degree},{index}"
+                if coefficient == 1:
+                    terms.append(basis)
+                else:
+                    terms.append(f"{coefficient}*{basis}")
         return " + ".join(terms)
 
 
-def _codimension_one_faces(simplex: "Simplex") -> tuple["Simplex", ...]:
-    return tuple(simplex[:index] + simplex[index + 1 :] for index in range(len(simplex)))
+Mod2Cohomology = PrimeFieldCohomology
+Mod2CohomologyElement = PrimeFieldCohomologyElement
+
+
+def _codimension_one_faces(simplex: "Simplex", p: int) -> tuple[tuple[int, "Simplex"], ...]:
+    return tuple(
+        (((-1) ** index) % p, simplex[:index] + simplex[index + 1 :])
+        for index in range(len(simplex))
+    )
+
+
+def _vector_sort_key(vector: Vector) -> tuple[tuple[int, int], ...]:
+    return tuple(sorted(vector.items()))
 
 
 def _steenrod_square_support(

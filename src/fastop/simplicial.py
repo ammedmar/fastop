@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from itertools import combinations
 from typing import Iterable
 
-from fastop.cohomology import Mod2Cohomology
+from fastop.cohomology import PrimeFieldCohomology
 
 Simplex = tuple[int, ...]
 
@@ -56,16 +56,10 @@ class SimplicialComplex:
             return dict(self._faces_by_dimension)
         return self._faces_by_dimension.get(dimension, frozenset())
 
-    def cohomology(self, p: int = 2, *, reduced: bool = False) -> Mod2Cohomology:
+    def cohomology(self, p: int = 2, *, reduced: bool = False) -> PrimeFieldCohomology:
         """Return mod-``p`` cohomology with a chosen basis.
-
-        Only ``p=2`` is implemented in this first version.
         """
-        if not isinstance(p, int) or isinstance(p, bool):
-            raise TypeError("p must be an integer")
-        if p != 2:
-            raise NotImplementedError("only mod 2 cohomology is implemented")
-        return Mod2Cohomology(self, reduced=reduced)
+        return PrimeFieldCohomology(self, p=p, reduced=reduced)
 
     def _build_faces(self) -> dict[int, frozenset[Simplex]]:
         faces: dict[int, set[Simplex]] = {}

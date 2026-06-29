@@ -25,10 +25,12 @@ def test_rejects_invalid_facets():
         SimplicialComplex([()])
 
 
-def test_only_mod_two_cohomology_is_implemented():
+def test_cohomology_requires_prime_characteristic():
     complex_ = SimplicialComplex([(0, 1)])
-    with pytest.raises(NotImplementedError, match="mod 2"):
-        complex_.cohomology(p=3)
+    with pytest.raises(ValueError, match="prime"):
+        complex_.cohomology(p=1)
+    with pytest.raises(ValueError, match="prime"):
+        complex_.cohomology(p=4)
 
 
 def test_basic_mod_two_betti_numbers():
@@ -40,6 +42,45 @@ def test_basic_mod_two_betti_numbers():
     assert interval.cohomology(reduced=True).betti_numbers() == {}
     assert circle.cohomology().betti_numbers() == {0: 1, 1: 1}
     assert sphere.cohomology().betti_numbers() == {0: 1, 2: 1}
+
+
+def test_mod_p_betti_numbers_for_odd_primes():
+    assert spaces.sphere(2).cohomology(p=3).betti_numbers() == {0: 1, 2: 1}
+    assert spaces.complex_projective_plane().cohomology(p=5).betti_numbers() == {
+        0: 1,
+        2: 1,
+        4: 1,
+    }
+
+
+def test_cohomology_object_exposes_prime():
+    for p in (2, 3, 5):
+        cohomology = spaces.complex_projective_plane().cohomology(p=p)
+        basis_element = cohomology.basis(2)[0]
+
+        assert cohomology.p == p
+        assert basis_element.p == p
+        assert cohomology.betti_numbers() == {0: 1, 2: 1, 4: 1}
+        assert f"p={p}" in repr(cohomology)
+
+
+def test_mod_p_class_arithmetic_uses_plain_int_coefficients():
+    cohomology = spaces.sphere(2).cohomology(p=3)
+    x = cohomology.basis(2)[0]
+
+    assert (x + x)._coordinates == {2: {0: 2}}
+    assert (x + x + x).is_zero()
+    assert (2 * x)._coordinates == {2: {0: 2}}
+
+
+def test_steenrod_squares_are_only_available_mod_two():
+    cohomology = spaces.complex_projective_plane().cohomology(p=3)
+    x = cohomology.basis(2)[0]
+
+    with pytest.raises(NotImplementedError, match="p=2"):
+        x.sq(2)
+    with pytest.raises(NotImplementedError, match="p=2"):
+        cohomology.operation_rank(2, 2)
 
 
 def test_basis_elements_have_python_style_squares():
