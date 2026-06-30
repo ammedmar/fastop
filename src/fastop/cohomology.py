@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from fastop._cochain_evaluation import evaluate_source_mod_2
+from fastop._cochain_evaluation import cochain_operation_vector, evaluate_source_mod_2
 from fastop._linear_algebra import (
     CoordinateBasis,
     Vector,
@@ -17,7 +17,6 @@ from fastop._linear_algebra import (
     vector_add,
     vector_scale,
 )
-from fastop._oddp_bridge import cochain_operation_vector
 
 if TYPE_CHECKING:
     from fastop.simplicial import Simplex, SimplicialComplex

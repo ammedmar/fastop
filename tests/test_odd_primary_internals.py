@@ -4,20 +4,20 @@ import types
 
 from fastop import spaces
 from fastop._cochain_evaluation import (
+    cochain_operation_vector,
+    cochain_operation_vector_from_universal,
     evaluate_all_targets,
     evaluate_source_focused,
     evaluate_target_omissions,
 )
 from fastop._oddp_bridge import (
-    cochain_operation_vector,
     cochain_operation_vector_oddp,
-    cochain_operation_vector_from_universal,
-    universal_operation,
 )
 from fastop._universal import (
     SignatureTable,
     UniversalOperation,
     native_universal_operation,
+    universal_operation,
 )
 
 

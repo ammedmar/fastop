@@ -5,10 +5,85 @@ from __future__ import annotations
 from itertools import combinations, product
 from typing import TYPE_CHECKING
 
-from fastop._universal import SignatureTable, UniversalOperation
+from fastop._linear_algebra import Vector
+from fastop._universal import SignatureTable, UniversalOperation, universal_operation
 
 if TYPE_CHECKING:
-    from fastop.simplicial import Simplex
+    from fastop.simplicial import Simplex, SimplicialComplex
+
+
+def cochain_operation_vector(
+    complex_: "SimplicialComplex",
+    cochain: dict["Simplex", int],
+    *,
+    p: int,
+    r: int,
+    source_degree: int,
+    bockstein: bool,
+    target_degree: int,
+    missing_vertices_per_factor: int,
+    oddp_s: int,
+    oddp_q: int,
+    target_face_to_index: dict["Simplex", int],
+    algorithm: str,
+) -> Vector:
+    """Build universal data and evaluate it on a cochain."""
+    return cochain_operation_vector_from_universal(
+        complex_,
+        cochain,
+        universal_operation(
+            p=p,
+            r=r,
+            source_degree=source_degree,
+            bockstein=bockstein,
+            target_degree=target_degree,
+            missing_vertices_per_factor=missing_vertices_per_factor,
+            oddp_s=oddp_s,
+            oddp_q=oddp_q,
+        ),
+        target_face_to_index,
+        algorithm=algorithm,
+    )
+
+
+def cochain_operation_vector_from_universal(
+    complex_: "SimplicialComplex",
+    cochain: dict["Simplex", int],
+    universal: UniversalOperation,
+    target_face_to_index: dict["Simplex", int],
+    *,
+    algorithm: str = "source_focused",
+) -> Vector:
+    """Evaluate universal data and return a target-degree vector."""
+    target_faces = complex_.faces(universal.target_degree)
+    if algorithm in {"all_targets", "direct", "all-target"}:
+        result = evaluate_all_targets(target_faces, cochain, universal)
+    elif algorithm in {"target_omissions", "target", "signature", "signatures"}:
+        result = evaluate_target_omissions(
+            target_faces,
+            cochain,
+            universal.signature_table(),
+        )
+    elif algorithm in {"source_mod_3", "prime-three"}:
+        if universal.p != 3:
+            raise ValueError("source_mod_3 is only available at p=3")
+        result = evaluate_source_focused(
+            target_faces,
+            cochain,
+            universal.signature_table(),
+        )
+    elif algorithm in {"source_focused", "support", "sparse"}:
+        result = evaluate_source_focused(
+            target_faces,
+            cochain,
+            universal.signature_table(),
+        )
+    else:
+        raise ValueError(f"unknown cochain evaluation algorithm: {algorithm!r}")
+    return {
+        target_face_to_index[simplex]: coefficient
+        for simplex, coefficient in result.items()
+    }
 
 
 def evaluate_source_mod_2(

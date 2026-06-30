@@ -163,7 +163,7 @@ universal_operation
 and returns a sparse cochain in the target degree. It should not know about
 cohomology projection.
 
-`reference.py` can temporarily wrap `oddp` for comparison tests while native
+`_oddp_bridge.py` can temporarily wrap `oddp` for comparison tests while native
 kernels are being written.
 
 ## Evaluation strategies
@@ -227,7 +227,7 @@ First native slice:
 
 1. Add `_oddp_bridge.py` as the current `oddp` bridge.
 2. Move the existing cohomology-level bridge out of `cohomology.py` into that
-   reference module.
+   bridge module.
 3. Keep behavior unchanged.
 
 Second native slice:

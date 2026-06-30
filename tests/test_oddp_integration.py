@@ -4,11 +4,11 @@ from pathlib import Path
 import pytest
 
 from fastop import spaces
+from fastop._cochain_evaluation import cochain_operation_vector_from_universal
 from fastop._oddp_bridge import (
     cochain_operation_vector_oddp,
-    cochain_operation_vector_from_universal,
-    universal_operation,
 )
+from fastop._universal import universal_operation
 
 
 ODDP_ROOT = Path(__file__).resolve().parents[2] / "oddp"
