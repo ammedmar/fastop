@@ -219,9 +219,19 @@ same cochain independently, so repeated source faces must be allowed. In
 practice, the target-simplex membership test and omitted-position size test
 discard many candidates.
 
-For `p = 3`, `oddp` has a specialized triple enumeration that first builds a
-candidate relation between source faces. We should keep that idea, but not the
-name. Internally this should become `source_mod_3`.
+For `p = 3`, `fastop` now has a specialized source-side evaluator named
+`source_mod_3`. It works directly with omission patterns. For each universal
+pattern, it chooses the pair of tensor factors covering the largest number of
+target positions, reconstructs the partial target simplex from those two
+source faces, then looks up the third source face by the positions forced by
+that partial target. In ordinary covered patterns, this changes the basic
+search from support cubed to support squared plus an indexed lookup.
+
+If an exotic pattern has a target position omitted by all three factors, the
+source-side reconstruction cannot see that vertex. In that case `source_mod_3`
+falls back to the target-omission evaluator for that pattern, preserving
+correctness while keeping the fast path for the formulas whose tensor factors
+cover the target simplex.
 
 ### `target_omissions`
 

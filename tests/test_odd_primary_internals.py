@@ -11,6 +11,7 @@ from fastop._cochain_evaluation import (
     cochain_operation_vector_from_universal,
     evaluate_all_targets,
     evaluate_source_focused,
+    evaluate_source_mod_3,
     evaluate_target_omissions,
 )
 from fastop._oddp_bridge import (
@@ -366,6 +367,66 @@ def test_source_focused_evaluator_matches_all_targets():
     ) == evaluate_all_targets(target_faces, cochain, universal)
 
 
+def test_source_mod_3_evaluator_matches_all_targets():
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+        terms={((0, 2), (0, 1), (1, 2)): 2},
+    )
+    target_faces = {(0, 1, 2), (0, 1, 3)}
+    cochain = {(0, 1): 1, (0, 2): 2, (1, 2): 1, (0, 3): 1}
+
+    assert evaluate_source_mod_3(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == evaluate_all_targets(target_faces, cochain, universal)
+
+
+def test_source_mod_3_evaluator_allows_repeated_source_factors():
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=0,
+        bockstein=True,
+        target_degree=1,
+        missing_vertices_per_factor=1,
+        terms={((0,), (0,), (1,)): 1},
+    )
+    target_faces = {(1, 2)}
+    cochain = {(1,): 2, (2,): 1}
+
+    assert evaluate_source_mod_3(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == evaluate_all_targets(target_faces, cochain, universal)
+
+
+def test_source_mod_3_falls_back_for_uncovered_target_positions():
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=0,
+        bockstein=True,
+        target_degree=3,
+        missing_vertices_per_factor=3,
+        terms={((0,), (0,), (0,)): 1},
+    )
+    target_faces = {(0, 1, 2, 3)}
+    cochain = {(0,): 1}
+
+    assert evaluate_source_mod_3(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == evaluate_all_targets(target_faces, cochain, universal)
+
+
 def test_target_omissions_evaluator_matches_all_targets():
     universal = UniversalOperation(
         p=3,
@@ -411,7 +472,7 @@ def test_auto_evaluator_prefers_all_targets_for_dense_support():
     assert _auto_evaluation_algorithm(target_faces, cochain, universal) == "all_targets"
 
 
-def test_auto_evaluator_uses_source_focused_for_tiny_support():
+def test_auto_evaluator_keeps_all_targets_for_prime_three():
     universal = UniversalOperation(
         p=3,
         r=1,
@@ -427,7 +488,7 @@ def test_auto_evaluator_uses_source_focused_for_tiny_support():
     }
     cochain = {(0, 1, 2): 1}
 
-    assert _auto_evaluation_algorithm(target_faces, cochain, universal) == "source_focused"
+    assert _auto_evaluation_algorithm(target_faces, cochain, universal) == "all_targets"
 
 
 def test_source_focused_evaluator_allows_repeated_source_factors():

@@ -6,7 +6,12 @@ from itertools import combinations, product
 from typing import TYPE_CHECKING
 
 from fastop._linear_algebra import Vector
-from fastop._universal import SignatureTable, UniversalOperation, universal_operation
+from fastop._universal import (
+    OmissionPattern,
+    SignatureTable,
+    UniversalOperation,
+    universal_operation,
+)
 
 try:
     from fastop._native import evaluate_all_targets as _native_evaluate_all_targets
@@ -74,7 +79,7 @@ def cochain_operation_vector_from_universal(
     elif algorithm in {"source_mod_3", "prime-three"}:
         if universal.p != 3:
             raise ValueError("source_mod_3 is only available at p=3")
-        result = evaluate_source_focused(
+        result = evaluate_source_mod_3(
             target_faces,
             cochain,
             universal.signature_table(),
@@ -106,11 +111,15 @@ def _auto_evaluation_algorithm(
     )
     if support_size == 0:
         return "all_targets"
+    if universal.p == 3:
+        return "all_targets"
 
     source_work = support_size ** universal.p
     target_work = len(target_faces) * max(len(universal.terms), 1)
 
     if source_work < target_work // 4:
+        if universal.p == 3:
+            return "source_mod_3"
         return "source_focused"
     return "all_targets"
 
@@ -279,6 +288,70 @@ def evaluate_source_focused(
     return answer
 
 
+def evaluate_source_mod_3(
+    target_faces: set["Simplex"] | frozenset["Simplex"],
+    cochain: dict["Simplex", int],
+    signatures: SignatureTable,
+) -> dict["Simplex", int]:
+    """Evaluate p=3 operations using pair-determined omission combinatorics."""
+    if signatures.p != 3:
+        raise ValueError("source_mod_3 is only available at p=3")
+
+    support = tuple(
+        (face, coefficient % 3)
+        for face, coefficient in sorted(cochain.items())
+        if coefficient % 3 and len(face) == signatures.source_degree + 1
+    )
+    if not support:
+        return {}
+
+    covered_patterns = {}
+    uncovered_patterns = {}
+    for pattern, coefficient in signatures.coefficients.items():
+        if _pattern_covers_target(pattern, signatures.target_degree):
+            covered_patterns[pattern] = coefficient
+        else:
+            uncovered_patterns[pattern] = coefficient
+
+    answer: dict["Simplex", int] = {}
+    if covered_patterns:
+        _add_source_mod_3_covered_patterns(
+            answer,
+            set(target_faces),
+            support,
+            SignatureTable(
+                p=signatures.p,
+                r=signatures.r,
+                source_degree=signatures.source_degree,
+                bockstein=signatures.bockstein,
+                target_degree=signatures.target_degree,
+                missing_vertices_per_factor=signatures.missing_vertices_per_factor,
+                coefficients=covered_patterns,
+            ),
+        )
+
+    if uncovered_patterns:
+        fallback = evaluate_target_omissions(
+            target_faces,
+            cochain,
+            SignatureTable(
+                p=signatures.p,
+                r=signatures.r,
+                source_degree=signatures.source_degree,
+                bockstein=signatures.bockstein,
+                target_degree=signatures.target_degree,
+                missing_vertices_per_factor=signatures.missing_vertices_per_factor,
+                coefficients=uncovered_patterns,
+            ),
+        )
+        for target, coefficient in fallback.items():
+            answer[target] = (answer.get(target, 0) + coefficient) % 3
+            if answer[target] == 0:
+                del answer[target]
+
+    return answer
+
+
 def evaluate_target_omissions(
     target_faces: set["Simplex"] | frozenset["Simplex"],
     cochain: dict["Simplex", int],
@@ -302,6 +375,163 @@ def evaluate_target_omissions(
         if coefficient:
             answer[target] = coefficient
     return answer
+
+
+def _add_source_mod_3_covered_patterns(
+    answer: dict["Simplex", int],
+    target_face_set: set["Simplex"],
+    support: tuple[tuple["Simplex", int], ...],
+    signatures: SignatureTable,
+) -> None:
+    target_length = signatures.target_degree + 1
+    positions = tuple(range(target_length))
+    support_indexes: dict[
+        tuple[int, ...],
+        dict[tuple[int, ...], list[tuple["Simplex", int]]],
+    ] = {}
+
+    for pattern, pattern_coefficient in signatures.coefficients.items():
+        selected_positions = tuple(
+            tuple(position for position in positions if position not in omissions)
+            for omissions in pattern
+        )
+        anchor_a, anchor_b, remaining = _best_source_mod_3_anchor_pair(
+            selected_positions
+        )
+        positions_a = selected_positions[anchor_a]
+        positions_b = selected_positions[anchor_b]
+        positions_c = selected_positions[remaining]
+        pair_cover = set(positions_a).union(positions_b)
+        fixed_positions_c = tuple(
+            position for position in positions_c if position in pair_cover
+        )
+        fixed_indices_c = tuple(
+            index
+            for index, position in enumerate(positions_c)
+            if position in pair_cover
+        )
+        source_c_by_key = support_indexes.setdefault(
+            fixed_indices_c,
+            _source_index_by_positions(support, fixed_indices_c),
+        )
+
+        for source_a, coefficient_a in support:
+            for source_b, coefficient_b in support:
+                partial_target = _partial_target_from_pair(
+                    source_a,
+                    source_b,
+                    positions_a,
+                    positions_b,
+                    target_length,
+                )
+                if partial_target is None:
+                    continue
+
+                key = tuple(partial_target[position] for position in fixed_positions_c)
+                for source_c, coefficient_c in source_c_by_key.get(key, ()):
+                    target = _target_from_remaining_source(
+                        partial_target,
+                        source_c,
+                        positions_c,
+                    )
+                    if target is None or target not in target_face_set:
+                        continue
+
+                    source_coefficients = [0, 0, 0]
+                    source_coefficients[anchor_a] = coefficient_a
+                    source_coefficients[anchor_b] = coefficient_b
+                    source_coefficients[remaining] = coefficient_c
+                    term_value = pattern_coefficient
+                    for coefficient in source_coefficients:
+                        term_value *= coefficient
+                    term_value %= 3
+                    if term_value:
+                        answer[target] = (answer.get(target, 0) + term_value) % 3
+                        if answer[target] == 0:
+                            del answer[target]
+
+
+def _pattern_covers_target(
+    pattern: OmissionPattern,
+    target_degree: int,
+) -> bool:
+    positions = set(range(target_degree + 1))
+    covered = set()
+    for omissions in pattern:
+        covered.update(positions.difference(omissions))
+    return covered == positions
+
+
+def _best_source_mod_3_anchor_pair(
+    selected_positions: tuple[tuple[int, ...], tuple[int, ...], tuple[int, ...]],
+) -> tuple[int, int, int]:
+    pairs = ((0, 1, 2), (0, 2, 1), (1, 2, 0))
+    return max(
+        pairs,
+        key=lambda pair: len(
+            set(selected_positions[pair[0]]).union(selected_positions[pair[1]])
+        ),
+    )
+
+
+def _source_index_by_positions(
+    support: tuple[tuple["Simplex", int], ...],
+    positions: tuple[int, ...],
+) -> dict[tuple[int, ...], list[tuple["Simplex", int]]]:
+    index: dict[tuple[int, ...], list[tuple["Simplex", int]]] = {}
+    for source, coefficient in support:
+        key = tuple(source[position] for position in positions)
+        index.setdefault(key, []).append((source, coefficient))
+    return index
+
+
+def _partial_target_from_pair(
+    source_a: "Simplex",
+    source_b: "Simplex",
+    positions_a: tuple[int, ...],
+    positions_b: tuple[int, ...],
+    target_length: int,
+) -> list[int | None] | None:
+    target: list[int | None] = [None] * target_length
+    for index, position in enumerate(positions_a):
+        target[position] = source_a[index]
+    for index, position in enumerate(positions_b):
+        vertex = source_b[index]
+        if target[position] is not None and target[position] != vertex:
+            return None
+        target[position] = vertex
+    if not _assigned_positions_are_increasing(target):
+        return None
+    return target
+
+
+def _target_from_remaining_source(
+    partial_target: list[int | None],
+    source: "Simplex",
+    positions: tuple[int, ...],
+) -> "Simplex" | None:
+    target = partial_target.copy()
+    for index, position in enumerate(positions):
+        vertex = source[index]
+        if target[position] is not None and target[position] != vertex:
+            return None
+        target[position] = vertex
+    if any(vertex is None for vertex in target):
+        return None
+    if not all(target[index] < target[index + 1] for index in range(len(target) - 1)):
+        return None
+    return tuple(target)
+
+
+def _assigned_positions_are_increasing(target: list[int | None]) -> bool:
+    last = None
+    for vertex in target:
+        if vertex is None:
+            continue
+        if last is not None and last >= vertex:
+            return False
+        last = vertex
+    return True
 
 
 def _omitted_positions_in_simplex(
