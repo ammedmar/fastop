@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastop._odd_primary.evaluate import evaluate_all_targets, evaluate_sparse_support
+from fastop._odd_primary.evaluate import (
+    evaluate_all_targets,
+    evaluate_sparse_support,
+    evaluate_target_signatures,
+)
 from fastop._odd_primary.indices import OperationIndex
 from fastop._odd_primary.universal import UniversalOperation, native_universal_operation
 from fastop._prime_field import Vector
@@ -86,6 +90,12 @@ def cochain_operation_vector_from_universal(
     target_faces = complex_.faces(universal.target_degree)
     if algorithm in {"direct", "all-target", "all_targets"}:
         result = evaluate_all_targets(target_faces, cochain, universal)
+    elif algorithm in {"target", "signature", "signatures"}:
+        result = evaluate_target_signatures(
+            target_faces,
+            cochain,
+            universal.signature_table(),
+        )
     elif algorithm in {"support", "sparse", "prime-three"}:
         result = evaluate_sparse_support(target_faces, cochain, universal.signature_table())
     else:

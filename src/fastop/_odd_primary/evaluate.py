@@ -84,6 +84,31 @@ def evaluate_sparse_support(
     return answer
 
 
+def evaluate_target_signatures(
+    target_faces: set["Simplex"] | frozenset["Simplex"],
+    cochain: dict["Simplex", int],
+    signatures: SignatureTable,
+) -> dict["Simplex", int]:
+    """Evaluate every target simplex using omission-pattern signatures."""
+    answer: dict["Simplex", int] = {}
+    for target in target_faces:
+        coefficient = 0
+        for pattern, pattern_coefficient in signatures.coefficients.items():
+            term_value = pattern_coefficient
+            for omitted_positions in pattern:
+                source = _selected_face_from_omissions(target, omitted_positions)
+                source_coefficient = cochain.get(source)
+                if source_coefficient is None:
+                    break
+                term_value *= source_coefficient
+            else:
+                coefficient += term_value
+        coefficient %= signatures.p
+        if coefficient:
+            answer[target] = coefficient
+    return answer
+
+
 def _omitted_positions_in_simplex(
     target: "Simplex",
     source: "Simplex",
@@ -93,4 +118,16 @@ def _omitted_positions_in_simplex(
         index
         for index, vertex in enumerate(target)
         if vertex not in source_vertices
+    )
+
+
+def _selected_face_from_omissions(
+    target: "Simplex",
+    omitted_positions: tuple[int, ...],
+) -> "Simplex":
+    omitted = set(omitted_positions)
+    return tuple(
+        vertex
+        for index, vertex in enumerate(target)
+        if index not in omitted
     )

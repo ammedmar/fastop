@@ -3,7 +3,11 @@ import sys
 import types
 
 from fastop import spaces
-from fastop._odd_primary.evaluate import evaluate_all_targets, evaluate_sparse_support
+from fastop._odd_primary.evaluate import (
+    evaluate_all_targets,
+    evaluate_sparse_support,
+    evaluate_target_signatures,
+)
 from fastop._odd_primary.indices import OperationIndex
 from fastop._odd_primary.reference import (
     cochain_operation_vector,
@@ -244,6 +248,26 @@ def test_sparse_support_evaluator_matches_all_targets():
     ) == evaluate_all_targets(target_faces, cochain, universal)
 
 
+def test_target_signature_evaluator_matches_all_targets():
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+        terms={((0, 2), (0, 1), (1, 2)): 2},
+    )
+    target_faces = {(0, 1, 2), (0, 1, 3)}
+    cochain = {(0, 1): 1, (0, 2): 2, (1, 2): 1, (0, 3): 1}
+
+    assert evaluate_target_signatures(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == evaluate_all_targets(target_faces, cochain, universal)
+
+
 def test_sparse_support_evaluator_allows_repeated_source_factors():
     universal = UniversalOperation(
         p=3,
@@ -258,6 +282,11 @@ def test_sparse_support_evaluator_allows_repeated_source_factors():
     cochain = {(1,): 2, (2,): 1}
 
     assert evaluate_sparse_support(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == evaluate_all_targets(target_faces, cochain, universal)
+    assert evaluate_target_signatures(
         target_faces,
         cochain,
         universal.signature_table(),
@@ -294,6 +323,35 @@ def test_reference_vector_from_universal_uses_native_evaluator():
         cochain,
         universal,
         target_face_to_index,
+    ) == {target_face_to_index[target]: 1}
+
+
+def test_reference_vector_from_universal_can_use_target_signatures():
+    complex_ = spaces.complex_projective_plane()
+    target_faces = sorted(complex_.faces(2))
+    target_face_to_index = {face: i for i, face in enumerate(target_faces)}
+    target = target_faces[0]
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+        terms={((0, 2), (0, 1), (1, 2)): 1},
+    )
+    cochain = {
+        (target[0], target[2]): 1,
+        (target[0], target[1]): 1,
+        (target[1], target[2]): 1,
+    }
+
+    assert cochain_operation_vector_from_universal(
+        complex_,
+        cochain,
+        universal,
+        target_face_to_index,
+        algorithm="target",
     ) == {target_face_to_index[target]: 1}
 
 

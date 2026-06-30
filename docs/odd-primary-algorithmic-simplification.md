@@ -237,6 +237,11 @@ This can be better when the complex has relatively few target simplices but
 the cochain support is broad. It also makes omitted positions cheap because
 they are positions in the current target simplex by construction.
 
+In `fastop`, this is the `target`/`signatures` internal evaluator. It traverses
+target simplices, but uses the omission-pattern signature table rather than
+the raw tensor terms. This gives a useful comparison point between the raw
+all-target tensor baseline and the support-indexed sparse evaluator.
+
 The native evaluator can eventually choose between:
 
 - support-indexed enumeration;
