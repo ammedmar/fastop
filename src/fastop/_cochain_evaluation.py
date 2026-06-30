@@ -52,10 +52,12 @@ def cochain_operation_vector_from_universal(
     universal: UniversalOperation,
     target_face_to_index: dict["Simplex", int],
     *,
-    algorithm: str = "source_focused",
+    algorithm: str = "auto",
 ) -> Vector:
     """Evaluate universal data and return a target-degree vector."""
     target_faces = complex_.faces(universal.target_degree)
+    if algorithm == "auto":
+        algorithm = _auto_evaluation_algorithm(target_faces, cochain, universal)
     if algorithm in {"all_targets", "direct", "all-target"}:
         result = evaluate_all_targets(target_faces, cochain, universal)
     elif algorithm in {"target_omissions", "target", "signature", "signatures"}:
@@ -84,6 +86,28 @@ def cochain_operation_vector_from_universal(
         target_face_to_index[simplex]: coefficient
         for simplex, coefficient in result.items()
     }
+
+
+def _auto_evaluation_algorithm(
+    target_faces: set["Simplex"] | frozenset["Simplex"],
+    cochain: dict["Simplex", int],
+    universal: UniversalOperation,
+) -> str:
+    """Choose an evaluator using coarse work estimates."""
+    support_size = sum(
+        1
+        for face, coefficient in cochain.items()
+        if coefficient % universal.p and len(face) == universal.source_degree + 1
+    )
+    if support_size == 0:
+        return "all_targets"
+
+    source_work = support_size ** universal.p
+    target_work = len(target_faces) * max(len(universal.terms), 1)
+
+    if source_work < target_work // 4:
+        return "source_focused"
+    return "all_targets"
 
 
 def evaluate_source_mod_2(

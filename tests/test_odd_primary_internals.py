@@ -4,6 +4,7 @@ import types
 
 from fastop import spaces
 from fastop._cochain_evaluation import (
+    _auto_evaluation_algorithm,
     cochain_operation_vector,
     cochain_operation_vector_from_universal,
     evaluate_all_targets,
@@ -291,6 +292,50 @@ def test_target_omissions_evaluator_matches_all_targets():
         cochain,
         universal.signature_table(),
     ) == evaluate_all_targets(target_faces, cochain, universal)
+
+
+def test_auto_evaluator_prefers_all_targets_for_dense_support():
+    universal = UniversalOperation(
+        p=3,
+        r=1,
+        source_degree=2,
+        bockstein=False,
+        target_degree=6,
+        missing_vertices_per_factor=4,
+        terms={((0, 1, 2), (2, 3, 4), (4, 5, 6)): 1},
+    )
+    target_faces = {tuple(range(7))}
+    cochain = {
+        face: 1
+        for face in (
+            (0, 1, 2),
+            (0, 1, 3),
+            (0, 1, 4),
+            (0, 1, 5),
+            (0, 1, 6),
+        )
+    }
+
+    assert _auto_evaluation_algorithm(target_faces, cochain, universal) == "all_targets"
+
+
+def test_auto_evaluator_uses_source_focused_for_tiny_support():
+    universal = UniversalOperation(
+        p=3,
+        r=1,
+        source_degree=2,
+        bockstein=False,
+        target_degree=6,
+        missing_vertices_per_factor=4,
+        terms={((0, 1, 2), (2, 3, 4), (4, 5, 6)): 1},
+    )
+    target_faces = {
+        tuple(range(offset, offset + 7))
+        for offset in range(20)
+    }
+    cochain = {(0, 1, 2): 1}
+
+    assert _auto_evaluation_algorithm(target_faces, cochain, universal) == "source_focused"
 
 
 def test_source_focused_evaluator_allows_repeated_source_factors():

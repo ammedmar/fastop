@@ -164,7 +164,7 @@ class PrimeFieldCohomology:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "source_focused",
+        algorithm: str = "auto",
     ) -> "PrimeFieldCohomologyElement":
         """Apply the Steenrod operation selected by the coefficient prime."""
         self._validate_operation_index(r)
@@ -192,7 +192,7 @@ class PrimeFieldCohomology:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "source_focused",
+        algorithm: str = "auto",
     ) -> list[Vector]:
         """Return columns of the selected Steenrod operation from ``H^degree``."""
         self._validate_operation_index(r)
@@ -214,7 +214,7 @@ class PrimeFieldCohomology:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "source_focused",
+        algorithm: str = "auto",
     ) -> int:
         """Return the rank of the selected Steenrod operation from ``H^degree``."""
         return rank(
@@ -401,7 +401,7 @@ class PrimeFieldCohomologyElement:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "source_focused",
+        algorithm: str = "auto",
     ) -> "PrimeFieldCohomologyElement":
         """Return the Steenrod operation selected by the coefficient prime."""
         return self.parent.operation(

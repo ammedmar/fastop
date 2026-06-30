@@ -371,8 +371,9 @@ Validation:
 
 ### Phase 2: evaluator choice
 
-Make odd-primary operations use `source_focused` when the input cochain support
-is small enough. Keep `all_targets` as a fallback and as a test oracle.
+Make odd-primary operations use an `auto` evaluator.  The conservative default
+is `all_targets`; switch to `source_focused` only when the input cochain support
+is small enough. Keep `all_targets` as the fallback and as a test oracle.
 
 Useful heuristic inputs:
 

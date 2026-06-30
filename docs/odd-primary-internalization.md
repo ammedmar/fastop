@@ -33,8 +33,11 @@ Better internal names:
   to `oddp`'s `prime-three` algorithm.
 
 The first two are target-side evaluators. The last three are source-side
-evaluators, with `source_focused` as the general odd-primary strategy and
-`source_mod_2`/`source_mod_3` as prime-specific optimizations.
+evaluators.  The public odd-primary default should use an `auto` policy:
+prefer `all_targets` as the conservative target-side baseline, and choose
+`source_focused` only when the input support is small enough to make source
+tuple enumeration cheaper.  `source_mod_2`/`source_mod_3` remain
+prime-specific source-side optimizations.
 The current `source_mod_2` implementation is an extraction of the existing
 mod-2 square support rule; it still needs a direct comparison with the
 `fast_sq` implementation before we claim it is the final mod-2 kernel.

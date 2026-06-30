@@ -132,6 +132,13 @@ def test_top_reduced_power_does_not_require_oddp(monkeypatch):
     assert x.operation(1) == cohomology.basis(6)[0]
 
 
+def test_odd_primary_default_auto_matches_all_targets():
+    cohomology = spaces.complex_projective_space(3).cohomology(p=3)
+    x = cohomology.basis(2)[0]
+
+    assert x.operation(1) == x.operation(1, algorithm="all_targets")
+
+
 def test_odd_primary_operation_uses_oddp_universal_conventions(monkeypatch):
     cohomology = spaces.complex_projective_plane().cohomology(p=5)
     one = cohomology.basis(0)[0]
