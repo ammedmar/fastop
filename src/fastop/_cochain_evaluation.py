@@ -1,14 +1,52 @@
-"""Native evaluators for odd-primary universal operation data."""
+"""Cochain-level Steenrod operation evaluators."""
 
 from __future__ import annotations
 
-from itertools import product
+from itertools import combinations, product
 from typing import TYPE_CHECKING
 
-from fastop._odd_primary.universal import SignatureTable, UniversalOperation
+from fastop._universal import SignatureTable, UniversalOperation
 
 if TYPE_CHECKING:
     from fastop.simplicial import Simplex
+
+
+def evaluate_source_mod_2(
+    target_length: int,
+    cocycle_support: list["Simplex"] | tuple["Simplex", ...],
+    target_simplices: set["Simplex"] | frozenset["Simplex"],
+) -> set["Simplex"]:
+    """Evaluate the current source-focused mod-2 square support rule."""
+    answer: set["Simplex"] = set()
+    for left, right in combinations(cocycle_support, 2):
+        left_vertices = set(left)
+        right_vertices = set(right)
+        union = left_vertices | right_vertices
+        if len(union) != target_length:
+            continue
+
+        simplex = tuple(sorted(union))
+        if simplex not in target_simplices:
+            continue
+
+        left_only = left_vertices - right_vertices
+        right_only = right_vertices - left_vertices
+        symmetric_difference = sorted(left_only | right_only)
+        indices = {}
+        for vertex in symmetric_difference:
+            indices[vertex] = (
+                simplex.index(vertex) + symmetric_difference.index(vertex)
+            ) % 2
+        left_indices = {indices[vertex] for vertex in left_only}
+        right_indices = {indices[vertex] for vertex in right_only}
+        if (left_indices == {0} and right_indices == {1}) or (
+            left_indices == {1} and right_indices == {0}
+        ):
+            if simplex in answer:
+                answer.remove(simplex)
+            else:
+                answer.add(simplex)
+    return answer
 
 
 def evaluate_all_targets(
@@ -21,22 +59,22 @@ def evaluate_all_targets(
     for target in target_faces:
         coefficient = 0
         for tensor, tensor_coefficient in universal.terms.items():
-            product = tensor_coefficient
+            term_value = tensor_coefficient
             for factor in tensor:
                 source = tuple(target[index] for index in factor)
                 source_coefficient = cochain.get(source)
                 if source_coefficient is None:
                     break
-                product *= source_coefficient
+                term_value *= source_coefficient
             else:
-                coefficient += product
+                coefficient += term_value
         coefficient %= universal.p
         if coefficient:
             answer[target] = coefficient
     return answer
 
 
-def evaluate_sparse_support(
+def evaluate_source_focused(
     target_faces: set["Simplex"] | frozenset["Simplex"],
     cochain: dict["Simplex", int],
     signatures: SignatureTable,
@@ -84,7 +122,7 @@ def evaluate_sparse_support(
     return answer
 
 
-def evaluate_target_signatures(
+def evaluate_target_omissions(
     target_faces: set["Simplex"] | frozenset["Simplex"],
     cochain: dict["Simplex", int],
     signatures: SignatureTable,

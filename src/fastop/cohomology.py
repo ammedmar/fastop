@@ -3,12 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from itertools import combinations
 from typing import TYPE_CHECKING
 
-from fastop._odd_primary.indices import OperationIndex
-from fastop._odd_primary.reference import cochain_operation_vector
-from fastop._prime_field import (
+from fastop._cochain_evaluation import evaluate_source_mod_2
+from fastop._linear_algebra import (
     CoordinateBasis,
     Vector,
     clean_vector,
@@ -19,6 +17,7 @@ from fastop._prime_field import (
     vector_add,
     vector_scale,
 )
+from fastop._oddp_bridge import cochain_operation_vector
 
 if TYPE_CHECKING:
     from fastop.simplicial import Simplex, SimplicialComplex
@@ -41,12 +40,16 @@ class PrimeFieldCohomology:
         p: int = 2,
         *,
         reduced: bool = False,
+        convention: int = 1,
     ):
         if not is_prime(p):
             raise ValueError("p must be a prime")
+        if convention not in {1, -1}:
+            raise ValueError("convention must be 1 or -1")
         self.complex = complex_
         self.p = p
         self.reduced = reduced
+        self.convention = convention
         self._faces = {
             degree: tuple(sorted(complex_.faces(degree)))
             for degree in range(complex_.dimension + 1)
@@ -93,6 +96,7 @@ class PrimeFieldCohomology:
         return (
             f"PrimeFieldCohomology(p={self.p}, "
             f"dimension={self.dimension}, "
+            f"convention={self.convention}, "
             f"betti_numbers={self.betti_numbers()})"
         )
 
@@ -150,8 +154,6 @@ class PrimeFieldCohomology:
             raise NotImplementedError("Steenrod squares are only implemented for p=2")
         if not isinstance(k, int) or isinstance(k, bool):
             raise TypeError("k must be an integer")
-        if k < 0:
-            raise ValueError("k must be nonnegative")
         answer = self.zero()
         for degree in sorted(element._coordinates):
             answer += self._square_homogeneous(element, degree, k)
@@ -163,7 +165,7 @@ class PrimeFieldCohomology:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "support",
+        algorithm: str = "source_focused",
     ) -> "PrimeFieldCohomologyElement":
         """Apply the Steenrod operation selected by the coefficient prime."""
         self._validate_operation_index(r)
@@ -191,7 +193,7 @@ class PrimeFieldCohomology:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "support",
+        algorithm: str = "source_focused",
     ) -> list[Vector]:
         """Return columns of the selected Steenrod operation from ``H^degree``."""
         self._validate_operation_index(r)
@@ -213,7 +215,7 @@ class PrimeFieldCohomology:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "support",
+        algorithm: str = "source_focused",
     ) -> int:
         """Return the rank of the selected Steenrod operation from ``H^degree``."""
         return rank(
@@ -229,6 +231,9 @@ class PrimeFieldCohomology:
     def _square_homogeneous(
         self, element: "PrimeFieldCohomologyElement", degree: int, k: int
     ) -> "PrimeFieldCohomologyElement":
+        k = self.convention * k
+        if k < 0:
+            return self.zero()
         if k == 0:
             return self.element({degree: element._coordinates.get(degree, {})})
         if k > degree:
@@ -242,7 +247,7 @@ class PrimeFieldCohomology:
         source_data = self._degree_data[degree]
         cocycle_vector = self.cocycle_vector(element, degree)
         support = [source_data.faces[index] for index in cocycle_vector]
-        target_support = _steenrod_square_support(
+        target_support = evaluate_source_mod_2(
             target_degree + 1,
             support,
             set(target_data.faces),
@@ -256,15 +261,26 @@ class PrimeFieldCohomology:
     def _validate_operation_index(self, r: int) -> None:
         if not isinstance(r, int) or isinstance(r, bool):
             raise TypeError("r must be an integer")
-        if r < 0:
-            raise ValueError("r must be nonnegative")
 
     def _operation_target_degree(self, degree: int, r: int, *, bockstein: bool) -> int:
         if self.p == 2:
             if bockstein:
                 raise NotImplementedError("Bockstein operations require an odd prime")
-            return degree + r
-        return OperationIndex(self.p, r, degree, bockstein).target_degree
+            return degree + self.convention * r
+        operation_degree = self.convention * r
+        return degree + self._odd_primary_missing_vertices(
+            operation_degree,
+            bockstein=bockstein,
+        )
+
+    def _odd_primary_missing_vertices(self, r: int, *, bockstein: bool) -> int:
+        return 2 * r * (self.p - 1) + int(bockstein)
+
+    def _oddp_operation_index(self, r: int) -> int:
+        return -r
+
+    def _oddp_source_degree(self, degree: int) -> int:
+        return -degree
 
     def _odd_primary_operation_homogeneous(
         self,
@@ -275,19 +291,33 @@ class PrimeFieldCohomology:
         bockstein: bool,
         algorithm: str,
     ) -> "PrimeFieldCohomologyElement":
-        index = OperationIndex(self.p, r, degree, bockstein)
-        target_degree = index.target_degree
+        operation_degree = self.convention * r
+        if operation_degree < 0:
+            return self.zero()
+
+        missing_vertices_per_factor = self._odd_primary_missing_vertices(
+            operation_degree,
+            bockstein=bockstein,
+        )
+        target_degree = degree + missing_vertices_per_factor
         target_data = self._degree_data.get(target_degree)
         if target_data is None:
             return self.zero()
-        if r == 0 and not bockstein:
+        if operation_degree == 0 and not bockstein:
             return self.element({degree: element._coordinates.get(degree, {})})
 
         target_vector = cochain_operation_vector(
             self.complex,
             self.cocycle(element, degree),
-            index,
-            target_data.face_to_index,
+            p=self.p,
+            r=operation_degree,
+            source_degree=degree,
+            bockstein=bockstein,
+            target_degree=target_degree,
+            missing_vertices_per_factor=missing_vertices_per_factor,
+            oddp_s=self._oddp_operation_index(operation_degree),
+            oddp_q=self._oddp_source_degree(degree),
+            target_face_to_index=target_data.face_to_index,
             algorithm=algorithm,
         )
         return self.project_cocycle(target_degree, target_vector)
@@ -372,7 +402,7 @@ class PrimeFieldCohomologyElement:
         r: int,
         *,
         bockstein: bool = False,
-        algorithm: str = "support",
+        algorithm: str = "source_focused",
     ) -> "PrimeFieldCohomologyElement":
         """Return the Steenrod operation selected by the coefficient prime."""
         return self.parent.operation(
@@ -461,40 +491,3 @@ def _codimension_one_faces(simplex: "Simplex", p: int) -> tuple[tuple[int, "Simp
 
 def _vector_sort_key(vector: Vector) -> tuple[tuple[int, int], ...]:
     return tuple(sorted(vector.items()))
-
-
-def _steenrod_square_support(
-    target_length: int,
-    cocycle_support: list["Simplex"],
-    target_simplices: set["Simplex"],
-) -> set["Simplex"]:
-    answer: set["Simplex"] = set()
-    for left, right in combinations(cocycle_support, 2):
-        left_vertices = set(left)
-        right_vertices = set(right)
-        union = left_vertices | right_vertices
-        if len(union) != target_length:
-            continue
-
-        simplex = tuple(sorted(union))
-        if simplex not in target_simplices:
-            continue
-
-        left_only = left_vertices - right_vertices
-        right_only = right_vertices - left_vertices
-        symmetric_difference = sorted(left_only | right_only)
-        indices = {}
-        for vertex in symmetric_difference:
-            indices[vertex] = (
-                simplex.index(vertex) + symmetric_difference.index(vertex)
-            ) % 2
-        left_indices = {indices[vertex] for vertex in left_only}
-        right_indices = {indices[vertex] for vertex in right_only}
-        if (left_indices == {0} and right_indices == {1}) or (
-            left_indices == {1} and right_indices == {0}
-        ):
-            if simplex in answer:
-                answer.remove(simplex)
-            else:
-                answer.add(simplex)
-    return answer

@@ -56,10 +56,16 @@ class SimplicialComplex:
             return dict(self._faces_by_dimension)
         return self._faces_by_dimension.get(dimension, frozenset())
 
-    def cohomology(self, p: int = 2, *, reduced: bool = False) -> PrimeFieldCohomology:
+    def cohomology(
+        self,
+        p: int = 2,
+        *,
+        reduced: bool = False,
+        convention: int = 1,
+    ) -> PrimeFieldCohomology:
         """Return mod-``p`` cohomology with a chosen basis.
         """
-        return PrimeFieldCohomology(self, p=p, reduced=reduced)
+        return PrimeFieldCohomology(self, p=p, reduced=reduced, convention=convention)
 
     def _build_faces(self) -> dict[int, frozenset[Simplex]]:
         faces: dict[int, set[Simplex]] = {}

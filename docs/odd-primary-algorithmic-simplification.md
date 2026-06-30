@@ -189,7 +189,7 @@ objects into C++.
 
 ## Evaluation strategies
 
-### All-target evaluator
+### `all_targets`
 
 This is the simplest evaluator and is already native in `fastop`.
 
@@ -203,9 +203,9 @@ number of target faces * number of universal terms
 It is excellent as a correctness baseline because it directly mirrors the
 universal tensor formula. It will become too expensive for larger complexes.
 
-### Sparse support evaluator
+### `source_focused`
 
-This should become the main evaluator.
+This should become the main general odd-primary evaluator.
 
 It loops over source simplices in the support of the input cochain and only
 creates target candidates that can actually contribute. Its naive cost is:
@@ -221,9 +221,9 @@ discard many candidates.
 
 For `p = 3`, `oddp` has a specialized triple enumeration that first builds a
 candidate relation between source faces. We should keep that idea, but not the
-name. Internally this is just a p=3 branch of sparse support enumeration.
+name. Internally this should become `source_mod_3`.
 
-### Target-indexed sparse evaluator
+### `target_omissions`
 
 There is another useful variant that `oddp` does not isolate as cleanly:
 
@@ -237,18 +237,23 @@ This can be better when the complex has relatively few target simplices but
 the cochain support is broad. It also makes omitted positions cheap because
 they are positions in the current target simplex by construction.
 
-In `fastop`, this is the `target`/`signatures` internal evaluator. It traverses
+In `fastop`, this is the `target_omissions` internal evaluator. It traverses
 target simplices, but uses the omission-pattern signature table rather than
 the raw tensor terms. This gives a useful comparison point between the raw
-all-target tensor baseline and the support-indexed sparse evaluator.
+`all_targets` tensor baseline and the `source_focused` evaluator.
 
 The native evaluator can eventually choose between:
 
-- support-indexed enumeration;
-- target-indexed enumeration;
-- p=3 candidate enumeration.
+- `all_targets`;
+- `target_omissions`;
+- `source_focused`;
+- `source_mod_2`;
+- `source_mod_3`.
 
 The public API should not expose these names. They are internal strategies.
+At present, `source_mod_2` is the extracted version of the original
+cohomology-level square support rule. The next mod-2 step is to compare it
+against the `fast_sq` implementation and replace the kernel if needed.
 
 ## Simplicial lookup simplification
 
@@ -269,7 +274,7 @@ Useful indexes:
 - `cochain_support`: tuple of `(face, coefficient)` pairs with nonzero
   coefficient;
 - `target_face_set`: membership table for possible output faces;
-- optionally, for a target-indexed evaluator, all `d`-faces contained in a
+- optionally, for `target_omissions`, all `d`-faces contained in a
   target face that also occur in the cochain support.
 
 With these indexes, the evaluator only manipulates vertex tuples and position
@@ -354,21 +359,20 @@ UniversalOperation -> SignatureTable
 where each tensor factor is replaced by its complement inside the target
 simplex positions.
 
-Then add a sparse evaluator that uses the signature table but still obtains
+Then add `source_focused`, using the signature table but still obtaining
 the table from the current universal operation source. This gives a new
 evaluation path without changing universal construction.
 
 Validation:
 
-- compare sparse output with all-target output on raw cochains;
+- compare `source_focused` output with `all_targets` output on raw cochains;
 - compare both with the `oddp` direct evaluator while the bridge remains;
 - keep CP3 and Moore examples as end-to-end checks.
 
 ### Phase 2: evaluator choice
 
-Make odd-primary operations use the sparse evaluator when the input cochain
-support is small enough. Keep the all-target evaluator as a fallback and as a
-test oracle.
+Make odd-primary operations use `source_focused` when the input cochain support
+is small enough. Keep `all_targets` as a fallback and as a test oracle.
 
 Useful heuristic inputs:
 
@@ -431,7 +435,7 @@ Universal data:
 
 Raw cochain evaluation:
 
-- compare all-target and sparse evaluators;
+- compare `all_targets`, `target_omissions`, and `source_focused`;
 - compare native output with `oddp.cochain_operation`;
 - use cochains with multiple support terms, not only basis generators.
 
@@ -449,10 +453,10 @@ collapsed into a closed formula for the signature table. The top reduced-power
 case suggests there are simple families, but the general case may still need a
 small dynamic-programming version of the resolution maps.
 
-The main engineering question is which sparse strategy wins most often:
-support-indexed enumeration or target-indexed enumeration. We should implement
-both in Python first, benchmark on the example spaces, and only then choose
-the C++ kernel shape.
+The main engineering question is which evaluator wins most often:
+`source_focused`, `target_omissions`, or a prime-specific source-side
+specialization. We should implement them in Python first, benchmark on the
+example spaces, and only then choose the C++ kernel shape.
 
 The main API question is already settled: users should keep calling
 `class.operation(r, bockstein=False)`. The prime is determined by the

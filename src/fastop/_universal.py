@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from fastop._odd_primary.indices import OperationIndex
-
 TensorTerm = tuple[tuple[int, ...], ...]
 OmissionPattern = tuple[tuple[int, ...], ...]
 
@@ -25,22 +23,28 @@ class UniversalOperation:
     @classmethod
     def from_terms(
         cls,
-        index: OperationIndex,
+        *,
+        p: int,
+        r: int,
+        source_degree: int,
+        bockstein: bool,
+        target_degree: int,
+        missing_vertices_per_factor: int,
         terms: dict[TensorTerm, int],
     ) -> "UniversalOperation":
         """Create universal data and reduce coefficients modulo ``p``."""
         reduced_terms = {
-            tensor: coefficient % index.p
+            tensor: coefficient % p
             for tensor, coefficient in terms.items()
-            if coefficient % index.p
+            if coefficient % p
         }
         return cls(
-            p=index.p,
-            r=index.r,
-            source_degree=index.source_degree,
-            bockstein=index.bockstein,
-            target_degree=index.target_degree,
-            missing_vertices_per_factor=index.missing_vertices_per_factor,
+            p=p,
+            r=r,
+            source_degree=source_degree,
+            bockstein=bockstein,
+            target_degree=target_degree,
+            missing_vertices_per_factor=missing_vertices_per_factor,
             terms=reduced_terms,
         )
 
@@ -94,21 +98,37 @@ class SignatureTable:
         )
 
 
-def native_universal_operation(index: OperationIndex) -> UniversalOperation | None:
+def native_universal_operation(
+    *,
+    p: int,
+    r: int,
+    source_degree: int,
+    bockstein: bool,
+    target_degree: int,
+    missing_vertices_per_factor: int,
+) -> UniversalOperation | None:
     """Return native universal data when the operation family is implemented."""
-    if index.bockstein:
+    if bockstein:
         return None
-    if index.r <= 0 or index.source_degree != 2 * index.r:
+    if r <= 0 or source_degree != 2 * r:
         return None
 
-    factor_length = index.source_degree + 1
-    step = index.source_degree
+    factor_length = source_degree + 1
+    step = source_degree
     tensor = tuple(
         tuple(range(step * factor, step * factor + factor_length))
-        for factor in range(index.p)
+        for factor in range(p)
     )
-    coefficient = (-1) ** index.r
-    return UniversalOperation.from_terms(index, {tensor: coefficient})
+    coefficient = (-1) ** r
+    return UniversalOperation.from_terms(
+        p=p,
+        r=r,
+        source_degree=source_degree,
+        bockstein=bockstein,
+        target_degree=target_degree,
+        missing_vertices_per_factor=missing_vertices_per_factor,
+        terms={tensor: coefficient},
+    )
 
 
 def _omitted_positions(

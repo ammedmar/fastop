@@ -15,23 +15,29 @@ The public language in `fastop` should be mathematical:
 - `operation(r, bockstein=True)` over odd `F_p` means the Bockstein followed
   by `P^r`.
 
-The names `support` and `prime-three` should not become `fastop` terminology.
-They are names of two evaluation strategies in `oddp`, not mathematical
-operations.
+The names `support` and `prime-three` should not become preferred `fastop`
+terminology. They are names of two evaluation strategies in `oddp`, not
+mathematical operations. They may remain as compatibility aliases only.
 
 Better internal names:
 
 - `all_targets`: evaluate the universal tensor formula on every target simplex.
   This corresponds to `oddp`'s `direct` algorithm.
-- `support_enumeration`: build candidate target simplices from the support of
-  the input cochain. This corresponds to `oddp`'s `support` algorithm.
-- `triple_support_enumeration`: a specialization of support enumeration when
-  `p = 3`, where candidate targets come from triples of source simplices. This
-  corresponds to `oddp`'s `prime-three` algorithm.
+- `target_omissions`: evaluate every target simplex using omission-pattern
+  signatures instead of raw tensor terms.
+- `source_focused`: build candidate target simplices from source faces in the
+  input cochain. This corresponds to `oddp`'s `support` algorithm.
+- `source_mod_2`: the mod-2 source-focused square evaluator, matching the
+  `fast_sq` direction.
+- `source_mod_3`: a p=3 specialization of `source_focused`. This corresponds
+  to `oddp`'s `prime-three` algorithm.
 
-The first one is simplest, but expensive. The second one is the general sparse
-strategy. The third one is a p=3 optimization and should eventually disappear
-behind the same internal sparse evaluator.
+The first two are target-side evaluators. The last three are source-side
+evaluators, with `source_focused` as the general odd-primary strategy and
+`source_mod_2`/`source_mod_3` as prime-specific optimizations.
+The current `source_mod_2` implementation is an extraction of the existing
+mod-2 square support rule; it still needs a direct comparison with the
+`fast_sq` implementation before we claim it is the final mod-2 kernel.
 
 ## What `oddp` currently does
 
@@ -88,7 +94,8 @@ Pieces to avoid copying directly:
 - the public `Steenrod` wrapper;
 - the broad `ParametricCounter` arithmetic model;
 - the resolution object hierarchy as public or semi-public API;
-- the algorithm names `support` and `prime-three`.
+- the algorithm names `support` and `prime-three`, except as compatibility
+  aliases.
 
 `fastop` already has sparse vectors over `F_p`; native code should use plain
 dicts with explicit modular arithmetic.
@@ -99,31 +106,30 @@ A native implementation should live behind the existing `operation(...)` API.
 The likely private modules are:
 
 ```text
-fastop/_odd_primary/
-  indices.py
-  universal.py
-  evaluate.py
-  reference.py
+fastop/
+  _universal.py
+  _cochain_evaluation.py
+  _linear_algebra.py
+  _oddp_bridge.py
 ```
 
-`indices.py` should own the convention conversion:
+The cohomology object should own convention conversion. It has a
+`convention` flag:
 
 ```python
-OperationIndex(
-    p: int,
-    r: int,
-    source_degree: int,
-    bockstein: bool,
-)
+complex.cohomology(p=3, convention=1)   # cohomological, default
+complex.cohomology(p=3, convention=-1)  # homological index signs
 ```
 
-with computed fields:
+For the current oddp bridge, the cohomology object converts from the public
+operation index to the oddp convention:
 
 ```python
-oddp_s = -r
+operation_degree = convention * r
+oddp_s = -operation_degree
 oddp_q = -source_degree
-target_degree = source_degree + 2*r*(p - 1) + int(bockstein)
-missing_vertices_per_factor = 2*r*(p - 1) + int(bockstein)
+target_degree = source_degree + 2*operation_degree*(p - 1) + int(bockstein)
+missing_vertices_per_factor = 2*operation_degree*(p - 1) + int(bockstein)
 ```
 
 `universal.py` should produce cached universal data:
@@ -145,7 +151,8 @@ The cache key should be:
 (p, r, source_degree, bockstein)
 ```
 
-`evaluate.py` should contain the sparse simplicial evaluator. It takes:
+`_cochain_evaluation.py` should contain the cochain-level evaluators. The
+source-focused evaluator takes:
 
 ```python
 faces_by_degree
@@ -161,7 +168,7 @@ kernels are being written.
 
 ## Evaluation strategies
 
-### All-target evaluation
+### `all_targets`
 
 For every target simplex in the target degree, try every tensor summand in the
 universal operation. This mirrors `oddp`'s `direct` algorithm.
@@ -169,29 +176,28 @@ universal operation. This mirrors `oddp`'s `direct` algorithm.
 This is useful as a simple reference implementation but should not be the main
 path for large complexes.
 
-### Sparse support enumeration
+### `source_focused`
 
 Choose `p` source simplices from the input cochain support. Their union is a
 possible target simplex. If that union is actually present in the complex and
 the omitted vertex positions have the required sizes, evaluate the universal
 signature on that configuration.
 
-This mirrors `oddp`'s `support` algorithm. In `fastop`, call it sparse support
-enumeration or simply the sparse evaluator.
+This mirrors `oddp`'s `support` algorithm.
 
-### Specialized p=3 sparse enumeration
+### `source_mod_3`
 
 When `p = 3`, the source tuple has exactly three factors. `oddp` uses a
 candidate list to reduce triple enumeration. This is a good optimization idea,
 but the name `prime-three` should not survive.
 
-In `fastop`, this should be an internal branch inside the sparse evaluator:
+In `fastop`, this should be an internal branch of the source-side evaluator:
 
 ```python
 if p == 3:
-    use_triple_candidate_enumeration(...)
+    use_source_mod_3(...)
 else:
-    use_general_support_enumeration(...)
+    use_source_focused(...)
 ```
 
 The caller should still ask for `operation(r)`, not for an algorithm named
@@ -219,11 +225,10 @@ Do not port all of `oddp`.
 
 First native slice:
 
-1. Add `_odd_primary/indices.py`.
-2. Add `_odd_primary/reference.py` as the current `oddp` bridge.
-3. Move the existing cohomology-level bridge out of `cohomology.py` into that
+1. Add `_oddp_bridge.py` as the current `oddp` bridge.
+2. Move the existing cohomology-level bridge out of `cohomology.py` into that
    reference module.
-4. Keep behavior unchanged.
+3. Keep behavior unchanged.
 
 Second native slice:
 
@@ -235,7 +240,7 @@ Third native slice:
 
 1. Implement all-target evaluation.
 2. Compare raw output with `oddp` direct output.
-3. Then implement sparse support enumeration and compare raw output with the
-   all-target evaluator.
+3. Then implement `source_focused` and compare raw output with the
+   `all_targets` evaluator.
 
 Only after these slices should we consider C++ kernels.

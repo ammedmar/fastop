@@ -36,6 +36,15 @@ def test_cohomology_requires_prime_characteristic():
         complex_.cohomology(p=4)
 
 
+def test_cohomology_accepts_only_supported_conventions():
+    complex_ = SimplicialComplex([(0, 1)])
+
+    assert complex_.cohomology(convention=1).convention == 1
+    assert complex_.cohomology(convention=-1).convention == -1
+    with pytest.raises(ValueError, match="convention"):
+        complex_.cohomology(convention=0)
+
+
 def test_basic_mod_two_betti_numbers():
     interval = SimplicialComplex([(0, 1)])
     circle = SimplicialComplex([(0, 1), (0, 2), (1, 2)])
@@ -138,7 +147,7 @@ def test_odd_primary_operation_uses_oddp_universal_conventions(monkeypatch):
     fake_oddp.Steenrod = FakeSteenrod
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
-    assert one.operation(0, bockstein=True, algorithm="support").is_zero()
+    assert one.operation(0, bockstein=True, algorithm="source_focused").is_zero()
     assert calls == [(5, 0, 0, True)]
     assert cohomology.operation_rank(0, 0, bockstein=True) == 0
 
@@ -159,8 +168,15 @@ def test_basis_elements_have_python_style_squares():
 
     assert x.sq(0) == x
     assert x.sq(1).is_zero()
-    with pytest.raises(ValueError, match="nonnegative"):
-        x.sq(-1)
+    assert x.sq(-1).is_zero()
+
+
+def test_homological_convention_uses_negative_operation_indices():
+    cohomology = spaces.real_projective_plane().cohomology(convention=-1)
+    x = cohomology.basis(1)[0]
+
+    assert x.sq(-1) == cohomology.basis(2)[0]
+    assert x.sq(1).is_zero()
 
 
 def test_projective_plane_has_nonzero_sq1_rank():
