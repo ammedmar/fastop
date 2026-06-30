@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from fastop._odd_primary.evaluate import evaluate_all_targets
+from fastop._odd_primary.evaluate import evaluate_all_targets, evaluate_sparse_support
 from fastop._odd_primary.indices import OperationIndex
 from fastop._odd_primary.universal import UniversalOperation, native_universal_operation
 from fastop._prime_field import Vector
@@ -27,6 +27,7 @@ def cochain_operation_vector(
         cochain,
         universal_operation(index),
         target_face_to_index,
+        algorithm=algorithm,
     )
 
 
@@ -78,13 +79,17 @@ def cochain_operation_vector_from_universal(
     cochain: dict["Simplex", int],
     universal: UniversalOperation,
     target_face_to_index: dict["Simplex", int],
+    *,
+    algorithm: str = "support",
 ) -> Vector:
     """Evaluate universal data natively and return a target-degree vector."""
-    result = evaluate_all_targets(
-        complex_.faces(universal.target_degree),
-        cochain,
-        universal,
-    )
+    target_faces = complex_.faces(universal.target_degree)
+    if algorithm in {"direct", "all-target", "all_targets"}:
+        result = evaluate_all_targets(target_faces, cochain, universal)
+    elif algorithm in {"support", "sparse", "prime-three"}:
+        result = evaluate_sparse_support(target_faces, cochain, universal.signature_table())
+    else:
+        raise ValueError(f"unknown odd-primary evaluation algorithm: {algorithm!r}")
     return {
         target_face_to_index[simplex]: coefficient
         for simplex, coefficient in result.items()

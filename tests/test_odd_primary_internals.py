@@ -1,8 +1,9 @@
+import pytest
 import sys
 import types
 
 from fastop import spaces
-from fastop._odd_primary.evaluate import evaluate_all_targets
+from fastop._odd_primary.evaluate import evaluate_all_targets, evaluate_sparse_support
 from fastop._odd_primary.indices import OperationIndex
 from fastop._odd_primary.reference import (
     cochain_operation_vector,
@@ -10,7 +11,11 @@ from fastop._odd_primary.reference import (
     cochain_operation_vector_from_universal,
     universal_operation,
 )
-from fastop._odd_primary.universal import UniversalOperation, native_universal_operation
+from fastop._odd_primary.universal import (
+    SignatureTable,
+    UniversalOperation,
+    native_universal_operation,
+)
 
 
 def test_operation_index_translates_fastop_to_oddp_conventions():
@@ -56,7 +61,7 @@ def test_reference_oddp_cochain_bridge_returns_fastop_sparse_vector(monkeypatch)
 
 def test_reference_bridge_uses_universal_data_and_native_evaluator(monkeypatch):
     complex_ = spaces.complex_projective_plane()
-    target_faces = sorted(complex_.faces(4))
+    target_faces = sorted(complex_.faces(2))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     target = target_faces[0]
     calls = []
@@ -65,7 +70,7 @@ def test_reference_bridge_uses_universal_data_and_native_evaluator(monkeypatch):
         @staticmethod
         def chain_operations(p, s, q, *, bockstein):
             calls.append((p, s, q, bockstein))
-            return {tuple((i,) for i in range(5)): 2}
+            return {((0, 2), (0, 1), (1, 2)): 2}
 
     fake_oddp = types.ModuleType("oddp")
     fake_oddp.Steenrod = FakeSteenrod
@@ -73,14 +78,18 @@ def test_reference_bridge_uses_universal_data_and_native_evaluator(monkeypatch):
 
     vector = cochain_operation_vector(
         complex_,
-        {vertex: 1 for vertex in zip(target)},
-        OperationIndex(p=3, r=1, source_degree=0),
+        {
+            (target[0], target[2]): 1,
+            (target[0], target[1]): 1,
+            (target[1], target[2]): 1,
+        },
+        OperationIndex(p=3, r=0, source_degree=1, bockstein=True),
         target_face_to_index,
-        algorithm="ignored",
+        algorithm="support",
     )
 
     assert vector == {target_face_to_index[target]: 2}
-    assert calls == [(3, -1, 0, False)]
+    assert calls == [(3, 0, -1, True)]
 
 
 def test_universal_operation_reduces_coefficients():
@@ -99,6 +108,41 @@ def test_universal_operation_reduces_coefficients():
     assert universal.target_degree == 6
     assert universal.missing_vertices_per_factor == 4
     assert universal.terms == {((0, 1, 2), (2, 3, 4), (4, 5, 6)): 2}
+
+
+def test_universal_operation_converts_to_omission_signature_table():
+    universal = UniversalOperation.from_terms(
+        OperationIndex(p=3, r=1, source_degree=2),
+        {
+            ((0, 1, 2), (2, 3, 4), (4, 5, 6)): 2,
+        },
+    )
+
+    assert universal.signature_table() == SignatureTable(
+        p=3,
+        r=1,
+        source_degree=2,
+        bockstein=False,
+        target_degree=6,
+        missing_vertices_per_factor=4,
+        coefficients={
+            (
+                (3, 4, 5, 6),
+                (0, 1, 5, 6),
+                (0, 1, 2, 3),
+            ): 2,
+        },
+    )
+
+
+def test_signature_table_validates_homogeneous_tensor_factors():
+    universal = UniversalOperation.from_terms(
+        OperationIndex(p=3, r=1, source_degree=2),
+        {((0, 1), (2, 3, 4), (4, 5, 6)): 1},
+    )
+
+    with pytest.raises(ValueError, match="source degree"):
+        universal.signature_table()
 
 
 def test_reference_bridge_builds_universal_operation(monkeypatch):
@@ -162,7 +206,98 @@ def test_all_targets_evaluator_applies_tensor_terms():
     ) == {(1, 2, 3): 1}
 
 
+def test_sparse_support_evaluator_applies_omission_signatures():
+    universal = UniversalOperation(
+        p=3,
+        r=1,
+        source_degree=0,
+        bockstein=False,
+        target_degree=2,
+        missing_vertices_per_factor=2,
+        terms={((0,), (1,), (2,)): 2},
+    )
+
+    assert evaluate_sparse_support(
+        {(1, 2, 3), (1, 2, 4)},
+        {(1,): 1, (2,): 2, (3,): 1, (4,): 0},
+        universal.signature_table(),
+    ) == {(1, 2, 3): 1}
+
+
+def test_sparse_support_evaluator_matches_all_targets():
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+        terms={((0, 2), (0, 1), (1, 2)): 2},
+    )
+    target_faces = {(0, 1, 2), (0, 1, 3)}
+    cochain = {(0, 1): 1, (0, 2): 2, (1, 2): 1, (0, 3): 1}
+
+    assert evaluate_sparse_support(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == evaluate_all_targets(target_faces, cochain, universal)
+
+
+def test_sparse_support_evaluator_allows_repeated_source_factors():
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=0,
+        bockstein=True,
+        target_degree=1,
+        missing_vertices_per_factor=1,
+        terms={((0,), (0,), (1,)): 1},
+    )
+    target_faces = {(1, 2)}
+    cochain = {(1,): 2, (2,): 1}
+
+    assert evaluate_sparse_support(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == evaluate_all_targets(target_faces, cochain, universal)
+    assert evaluate_sparse_support(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    ) == {(1, 2): 1}
+
+
 def test_reference_vector_from_universal_uses_native_evaluator():
+    complex_ = spaces.complex_projective_plane()
+    target_faces = sorted(complex_.faces(2))
+    target_face_to_index = {face: i for i, face in enumerate(target_faces)}
+    target = target_faces[0]
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+        terms={((0, 2), (0, 1), (1, 2)): 1},
+    )
+    cochain = {
+        (target[0], target[2]): 1,
+        (target[0], target[1]): 1,
+        (target[1], target[2]): 1,
+    }
+
+    assert cochain_operation_vector_from_universal(
+        complex_,
+        cochain,
+        universal,
+        target_face_to_index,
+    ) == {target_face_to_index[target]: 1}
+
+
+def test_reference_vector_from_universal_can_use_all_targets():
     complex_ = spaces.complex_projective_plane()
     target_faces = sorted(complex_.faces(4))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
@@ -183,4 +318,5 @@ def test_reference_vector_from_universal_uses_native_evaluator():
         cochain,
         universal,
         target_face_to_index,
+        algorithm="all_targets",
     ) == {target_face_to_index[target]: 1}

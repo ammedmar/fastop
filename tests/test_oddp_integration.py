@@ -66,6 +66,7 @@ def test_all_targets_evaluator_matches_oddp_direct_on_cp3_generator():
         cochain,
         universal,
         target_data.face_to_index,
+        algorithm="all_targets",
     ) == cochain_operation_vector_oddp(
         complex_,
         cochain,
@@ -88,6 +89,7 @@ def test_all_targets_evaluator_matches_oddp_direct_on_moore_bockstein():
         cochain,
         universal,
         target_data.face_to_index,
+        algorithm="all_targets",
     ) == cochain_operation_vector_oddp(
         complex_,
         cochain,
