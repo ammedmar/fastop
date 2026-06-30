@@ -157,6 +157,30 @@ def universal_operation(
     if oddp_s is None or oddp_q is None:
         raise NotImplementedError("this universal operation is not implemented natively")
 
+    return oddp_universal_operation(
+        p=p,
+        r=r,
+        source_degree=source_degree,
+        bockstein=bockstein,
+        target_degree=target_degree,
+        missing_vertices_per_factor=missing_vertices_per_factor,
+        oddp_s=oddp_s,
+        oddp_q=oddp_q,
+    )
+
+
+def oddp_universal_operation(
+    *,
+    p: int,
+    r: int,
+    source_degree: int,
+    bockstein: bool,
+    target_degree: int,
+    missing_vertices_per_factor: int,
+    oddp_s: int,
+    oddp_q: int,
+) -> UniversalOperation:
+    """Build universal tensor data using oddp as an explicit oracle."""
     from fastop._oddp_bridge import universal_terms_oddp
 
     return UniversalOperation.from_terms(

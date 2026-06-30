@@ -8,7 +8,11 @@ from fastop._cochain_evaluation import cochain_operation_vector_from_universal
 from fastop._oddp_bridge import (
     cochain_operation_vector_oddp,
 )
-from fastop._universal import universal_operation
+from fastop._universal import (
+    native_universal_operation,
+    oddp_universal_operation,
+    universal_operation,
+)
 
 
 ODDP_ROOT = Path(__file__).resolve().parents[2] / "oddp"
@@ -70,6 +74,30 @@ def test_reference_universal_operation_for_moore_bockstein():
 
     assert universal.target_degree == 2
     assert universal.terms == {((0, 2), (0, 1), (1, 2)): 2}
+
+
+@pytest.mark.parametrize("p,r,source_degree", [(3, 1, 2), (5, 1, 2), (3, 2, 4)])
+def test_native_universal_top_reduced_power_matches_oddp_oracle(
+    p,
+    r,
+    source_degree,
+):
+    operation = _bridge_kwargs(p=p, r=r, source_degree=source_degree)
+
+    assert native_universal_operation(**_universal_kwargs(p, r, source_degree)) == (
+        oddp_universal_operation(**operation)
+    )
+
+
+def test_oddp_universal_oracle_covers_unimplemented_bockstein_slice():
+    operation = _bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True)
+
+    assert native_universal_operation(
+        **_universal_kwargs(p=3, r=0, source_degree=1, bockstein=True)
+    ) is None
+    assert oddp_universal_operation(**operation).terms == {
+        ((0, 2), (0, 1), (1, 2)): 2
+    }
 
 
 def test_all_targets_evaluator_matches_oddp_direct_on_cp3_generator():
