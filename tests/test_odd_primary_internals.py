@@ -3,6 +3,7 @@ import sys
 import types
 
 from fastop import spaces
+import fastop.cohomology as cohomology_module
 from fastop._cochain_evaluation import (
     _auto_evaluation_algorithm,
     cochain_operation_vector,
@@ -49,6 +50,47 @@ def test_cohomology_convention_converts_fastop_to_oddp_conventions():
     assert cohomology._oddp_source_degree(3) == -3
     assert cohomology._odd_primary_missing_vertices(2, bockstein=True) == 17
     assert cohomology._operation_target_degree(3, 2, bockstein=True) == 20
+
+
+def test_cohomology_caches_universal_operations(monkeypatch):
+    cohomology = spaces.simplex(2).cohomology(p=3)
+    calls = []
+
+    def fake_universal_operation(**kwargs):
+        calls.append(kwargs)
+        return UniversalOperation.from_terms(
+            p=3,
+            r=0,
+            source_degree=1,
+            bockstein=True,
+            target_degree=2,
+            missing_vertices_per_factor=1,
+            terms={((0, 1), (1, 2), (0, 2)): 1},
+        )
+
+    monkeypatch.setattr(
+        cohomology_module,
+        "universal_operation",
+        fake_universal_operation,
+    )
+
+    first = cohomology._universal_operation(
+        operation_degree=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+    )
+    second = cohomology._universal_operation(
+        operation_degree=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+    )
+
+    assert first is second
+    assert len(calls) == 1
 
 
 def test_reference_oddp_cochain_bridge_returns_fastop_sparse_vector(monkeypatch):

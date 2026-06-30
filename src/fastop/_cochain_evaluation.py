@@ -154,10 +154,25 @@ def evaluate_all_targets(
     universal: UniversalOperation,
 ) -> dict["Simplex", int]:
     """Evaluate every target simplex against every universal tensor term."""
+    tensor_terms = tuple(universal.terms.items())
+    factors = {
+        factor
+        for tensor, _ in tensor_terms
+        for factor in tensor
+    }
+    factor_reference_count = sum(len(tensor) for tensor, _ in tensor_terms)
+    if len(factors) < factor_reference_count:
+        return _evaluate_all_targets_with_factor_cache(
+            target_faces,
+            cochain,
+            universal.p,
+            tensor_terms,
+        )
+
     answer: dict["Simplex", int] = {}
     for target in target_faces:
         coefficient = 0
-        for tensor, tensor_coefficient in universal.terms.items():
+        for tensor, tensor_coefficient in tensor_terms:
             term_value = tensor_coefficient
             for factor in tensor:
                 source = tuple(target[index] for index in factor)
@@ -168,6 +183,36 @@ def evaluate_all_targets(
             else:
                 coefficient += term_value
         coefficient %= universal.p
+        if coefficient:
+            answer[target] = coefficient
+    return answer
+
+
+def _evaluate_all_targets_with_factor_cache(
+    target_faces: set["Simplex"] | frozenset["Simplex"],
+    cochain: dict["Simplex", int],
+    p: int,
+    tensor_terms: tuple[tuple[tuple[tuple[int, ...], ...], int], ...],
+) -> dict["Simplex", int]:
+    answer: dict["Simplex", int] = {}
+    missing = object()
+    for target in target_faces:
+        coefficient = 0
+        factor_coefficients = {}
+        for tensor, tensor_coefficient in tensor_terms:
+            term_value = tensor_coefficient
+            for factor in tensor:
+                source_coefficient = factor_coefficients.get(factor, missing)
+                if source_coefficient is missing:
+                    source = tuple(target[index] for index in factor)
+                    source_coefficient = cochain.get(source)
+                    factor_coefficients[factor] = source_coefficient
+                if source_coefficient is None:
+                    break
+                term_value *= source_coefficient
+            else:
+                coefficient += term_value
+        coefficient %= p
         if coefficient:
             answer[target] = coefficient
     return answer

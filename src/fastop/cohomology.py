@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from fastop._cochain_evaluation import cochain_operation_vector, evaluate_source_mod_2
+from fastop._cochain_evaluation import (
+    cochain_operation_vector_from_universal,
+    evaluate_source_mod_2,
+)
 from fastop._linear_algebra import (
     CoordinateBasis,
     Vector,
@@ -17,6 +20,7 @@ from fastop._linear_algebra import (
     vector_add,
     vector_scale,
 )
+from fastop._universal import universal_operation
 
 if TYPE_CHECKING:
     from fastop.simplicial import Simplex, SimplicialComplex
@@ -60,6 +64,7 @@ class PrimeFieldCohomology:
         self._boundary_columns = self._build_boundary_columns()
         self._coboundary_columns = self._build_coboundary_columns()
         self._degree_data = self._build_degree_data()
+        self._universal_operations = {}
 
     @property
     def dimension(self) -> int:
@@ -281,6 +286,37 @@ class PrimeFieldCohomology:
     def _oddp_source_degree(self, degree: int) -> int:
         return -degree
 
+    def _universal_operation(
+        self,
+        *,
+        operation_degree: int,
+        source_degree: int,
+        bockstein: bool,
+        target_degree: int,
+        missing_vertices_per_factor: int,
+    ):
+        key = (
+            operation_degree,
+            source_degree,
+            bockstein,
+            target_degree,
+            missing_vertices_per_factor,
+        )
+        cached = self._universal_operations.get(key)
+        if cached is None:
+            cached = universal_operation(
+                p=self.p,
+                r=operation_degree,
+                source_degree=source_degree,
+                bockstein=bockstein,
+                target_degree=target_degree,
+                missing_vertices_per_factor=missing_vertices_per_factor,
+                oddp_s=self._oddp_operation_index(operation_degree),
+                oddp_q=self._oddp_source_degree(source_degree),
+            )
+            self._universal_operations[key] = cached
+        return cached
+
     def _odd_primary_operation_homogeneous(
         self,
         element: "PrimeFieldCohomologyElement",
@@ -305,17 +341,17 @@ class PrimeFieldCohomology:
         if operation_degree == 0 and not bockstein:
             return self.element({degree: element._coordinates.get(degree, {})})
 
-        target_vector = cochain_operation_vector(
-            self.complex,
-            self.cocycle(element, degree),
-            p=self.p,
-            r=operation_degree,
+        universal = self._universal_operation(
+            operation_degree=operation_degree,
             source_degree=degree,
             bockstein=bockstein,
             target_degree=target_degree,
             missing_vertices_per_factor=missing_vertices_per_factor,
-            oddp_s=self._oddp_operation_index(operation_degree),
-            oddp_q=self._oddp_source_degree(degree),
+        )
+        target_vector = cochain_operation_vector_from_universal(
+            self.complex,
+            self.cocycle(element, degree),
+            universal,
             target_face_to_index=target_data.face_to_index,
             algorithm=algorithm,
         )
