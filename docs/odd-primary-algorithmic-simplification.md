@@ -233,6 +233,15 @@ falls back to the target-omission evaluator for that pattern, preserving
 correctness while keeping the fast path for the formulas whose tensor factors
 cover the target simplex.
 
+Idea: keep `all_targets` as the default for p=3 until the selector has a
+clear sparse-support regime. Native timings show that CP3 and the mod-3 Moore
+space are still better served by `all_targets`: their target sets are small
+relative to the input cochain support, so the source-pair search performs more
+work than the target scan. The specialized `source_mod_3` kernel becomes the
+right tool when support is tiny and the target degree has many simplices; in a
+synthetic sparse case with 280840 target faces and support size 3, native
+`source_mod_3` was orders of magnitude faster than native `all_targets`.
+
 ### `target_omissions`
 
 There is another useful variant that `oddp` does not isolate as cleanly:

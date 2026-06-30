@@ -15,8 +15,12 @@ from fastop._universal import (
 
 try:
     from fastop._native import evaluate_all_targets as _native_evaluate_all_targets
+    from fastop._native import (
+        evaluate_source_mod_3_covered as _native_evaluate_source_mod_3_covered,
+    )
 except ImportError:  # pragma: no cover - depends on optional extension build
     _native_evaluate_all_targets = None
+    _native_evaluate_source_mod_3_covered = None
 
 if TYPE_CHECKING:
     from fastop.simplicial import Simplex, SimplicialComplex
@@ -118,8 +122,6 @@ def _auto_evaluation_algorithm(
     target_work = len(target_faces) * max(len(universal.terms), 1)
 
     if source_work < target_work // 4:
-        if universal.p == 3:
-            return "source_mod_3"
         return "source_focused"
     return "all_targets"
 
@@ -315,20 +317,31 @@ def evaluate_source_mod_3(
 
     answer: dict["Simplex", int] = {}
     if covered_patterns:
-        _add_source_mod_3_covered_patterns(
-            answer,
-            set(target_faces),
-            support,
-            SignatureTable(
-                p=signatures.p,
-                r=signatures.r,
-                source_degree=signatures.source_degree,
-                bockstein=signatures.bockstein,
-                target_degree=signatures.target_degree,
-                missing_vertices_per_factor=signatures.missing_vertices_per_factor,
-                coefficients=covered_patterns,
-            ),
+        covered_signature_table = SignatureTable(
+            p=signatures.p,
+            r=signatures.r,
+            source_degree=signatures.source_degree,
+            bockstein=signatures.bockstein,
+            target_degree=signatures.target_degree,
+            missing_vertices_per_factor=signatures.missing_vertices_per_factor,
+            coefficients=covered_patterns,
         )
+        if _native_evaluate_source_mod_3_covered is not None:
+            answer.update(
+                _native_evaluate_source_mod_3_covered(
+                    target_faces,
+                    support,
+                    covered_signature_table.coefficients,
+                    covered_signature_table.target_degree,
+                )
+            )
+        else:
+            _add_source_mod_3_covered_patterns(
+                answer,
+                set(target_faces),
+                support,
+                covered_signature_table,
+            )
 
     if uncovered_patterns:
         fallback = evaluate_target_omissions(

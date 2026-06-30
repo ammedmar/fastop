@@ -387,6 +387,43 @@ def test_source_mod_3_evaluator_matches_all_targets():
     ) == evaluate_all_targets(target_faces, cochain, universal)
 
 
+def test_native_source_mod_3_matches_python_fallback(monkeypatch):
+    if cochain_evaluation_module._native_evaluate_source_mod_3_covered is None:
+        pytest.skip("native extension is not built")
+
+    universal = UniversalOperation(
+        p=3,
+        r=0,
+        source_degree=1,
+        bockstein=True,
+        target_degree=2,
+        missing_vertices_per_factor=1,
+        terms={
+            ((0, 2), (0, 1), (1, 2)): 2,
+            ((0, 1), (0, 2), (1, 2)): 1,
+        },
+    )
+    target_faces = {(0, 1, 2), (0, 1, 3)}
+    cochain = {(0, 1): 1, (0, 2): 2, (1, 2): 1, (0, 3): 1}
+
+    native = evaluate_source_mod_3(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    )
+    monkeypatch.setattr(
+        cochain_evaluation_module,
+        "_native_evaluate_source_mod_3_covered",
+        None,
+    )
+
+    assert native == evaluate_source_mod_3(
+        target_faces,
+        cochain,
+        universal.signature_table(),
+    )
+
+
 def test_source_mod_3_evaluator_allows_repeated_source_factors():
     universal = UniversalOperation(
         p=3,
