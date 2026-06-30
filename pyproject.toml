@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Fast computations of cohomology operations on simplicial data."
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
   {name = "Anibal M. Medina-Mardones", email = "ammedmar@gmail.com"},
 ]
@@ -16,7 +16,6 @@ classifiers = [
   "Development Status :: 2 - Pre-Alpha",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",

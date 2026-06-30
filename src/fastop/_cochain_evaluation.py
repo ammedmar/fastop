@@ -8,6 +8,11 @@ from typing import TYPE_CHECKING
 from fastop._linear_algebra import Vector
 from fastop._universal import SignatureTable, UniversalOperation, universal_operation
 
+try:
+    from fastop._native import evaluate_all_targets as _native_evaluate_all_targets
+except ImportError:  # pragma: no cover - depends on optional extension build
+    _native_evaluate_all_targets = None
+
 if TYPE_CHECKING:
     from fastop.simplicial import Simplex, SimplicialComplex
 
@@ -154,6 +159,14 @@ def evaluate_all_targets(
     universal: UniversalOperation,
 ) -> dict["Simplex", int]:
     """Evaluate every target simplex against every universal tensor term."""
+    if _native_evaluate_all_targets is not None:
+        return _native_evaluate_all_targets(
+            target_faces,
+            cochain,
+            universal.p,
+            universal.terms,
+        )
+
     tensor_terms = tuple(universal.terms.items())
     factors = {
         factor

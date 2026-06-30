@@ -4,6 +4,7 @@ import types
 
 from fastop import spaces
 import fastop.cohomology as cohomology_module
+import fastop._cochain_evaluation as cochain_evaluation_module
 from fastop._cochain_evaluation import (
     _auto_evaluation_algorithm,
     cochain_operation_vector,
@@ -276,6 +277,55 @@ def test_all_targets_evaluator_applies_tensor_terms():
         {(1,): 1, (2,): 2, (3,): 1, (4,): 0},
         universal,
     ) == {(1, 2, 3): 1}
+
+
+def test_native_all_targets_matches_python_fallback(monkeypatch):
+    if cochain_evaluation_module._native_evaluate_all_targets is None:
+        pytest.skip("native extension is not built")
+
+    universal = UniversalOperation(
+        p=5,
+        r=0,
+        source_degree=2,
+        bockstein=True,
+        target_degree=3,
+        missing_vertices_per_factor=1,
+        terms={
+            (
+                (0, 1, 2),
+                (0, 1, 3),
+                (0, 2, 3),
+                (1, 2, 3),
+                (0, 1, 2),
+            ): 4,
+            (
+                (0, 1, 3),
+                (0, 1, 3),
+                (0, 1, 2),
+                (0, 2, 3),
+                (0, 1, 3),
+            ): 1,
+        },
+    )
+    target_faces = {
+        (0, 1, 2, 3),
+        (0, 1, 2, 4),
+        (0, 1, 3, 4),
+    }
+    cochain = {
+        (0, 1, 2): 2,
+        (0, 1, 3): 1,
+        (0, 2, 3): 4,
+        (1, 2, 3): 3,
+        (0, 1, 4): 1,
+        (0, 2, 4): 1,
+        (1, 2, 4): 1,
+    }
+
+    native = evaluate_all_targets(target_faces, cochain, universal)
+    monkeypatch.setattr(cochain_evaluation_module, "_native_evaluate_all_targets", None)
+
+    assert native == evaluate_all_targets(target_faces, cochain, universal)
 
 
 def test_source_focused_evaluator_applies_omission_signatures():
