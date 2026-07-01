@@ -26,16 +26,21 @@ def clean_vector(vector: Vector, p: int) -> Vector:
 def vector_add(left: Vector, right: Vector, p: int, scale: int = 1) -> Vector:
     """Return ``left + scale * right`` over ``F_p``."""
     answer = dict(left)
+    return _vector_add_inplace(answer, right, p, scale)
+
+
+def _vector_add_inplace(left: Vector, right: Vector, p: int, scale: int = 1) -> Vector:
+    """Add ``scale * right`` into ``left`` over ``F_p``."""
     scale %= p
     if not scale:
-        return answer
+        return left
     for index, coefficient in right.items():
-        value = (answer.get(index, 0) + scale * coefficient) % p
+        value = (left.get(index, 0) + scale * coefficient) % p
         if value:
-            answer[index] = value
+            left[index] = value
         else:
-            answer.pop(index, None)
-    return answer
+            left.pop(index, None)
+    return left
 
 
 def vector_scale(vector: Vector, scalar: int, p: int) -> Vector:
@@ -81,7 +86,7 @@ def reduce_vector(basis: dict[int, Vector], vector: Vector, p: int) -> Vector:
     for pivot in sorted(basis, reverse=True):
         coefficient = vector.get(pivot, 0)
         if coefficient:
-            vector = vector_add(vector, basis[pivot], p, -coefficient)
+            _vector_add_inplace(vector, basis[pivot], p, -coefficient)
     return vector
 
 
@@ -95,15 +100,22 @@ def rref(rows, p: int) -> dict[int, Vector]:
 
 def nullspace(columns: list[Vector], codomain_dimension: int, p: int) -> list[Vector]:
     """Return a basis for the kernel of the map with the given columns."""
-    rows = []
-    for row_index in range(codomain_dimension):
-        row = {
-            column_index: column[row_index] % p
-            for column_index, column in enumerate(columns)
-            if column.get(row_index, 0) % p
-        }
-        if row:
-            rows.append(row)
+    return _row_basis_and_nullspace(columns, codomain_dimension, p)[1]
+
+
+def _row_basis_and_nullspace(
+    columns: list[Vector],
+    codomain_dimension: int,
+    p: int,
+) -> tuple[dict[int, Vector], list[Vector]]:
+    """Return a row basis and kernel basis for a column-defined map."""
+    rows_by_index: list[Vector] = [{} for _ in range(codomain_dimension)]
+    for column_index, column in enumerate(columns):
+        for row_index, coefficient in column.items():
+            value = coefficient % p
+            if value:
+                rows_by_index[row_index][column_index] = value
+    rows = [row for row in rows_by_index if row]
 
     row_basis = rref(rows, p)
     pivots = set(row_basis)
@@ -117,7 +129,7 @@ def nullspace(columns: list[Vector], codomain_dimension: int, p: int) -> list[Ve
             if coefficient:
                 vector[pivot] = (-coefficient) % p
         cycles.append(clean_vector(vector, p))
-    return cycles
+    return row_basis, cycles
 
 
 class CoordinateBasis:
@@ -138,8 +150,8 @@ class CoordinateBasis:
             coefficient = vector.get(pivot, 0)
             if coefficient:
                 row, row_coordinate = self._rows[pivot]
-                vector = vector_add(vector, row, p, -coefficient)
-                coordinate = vector_add(coordinate, row_coordinate, p, -coefficient)
+                _vector_add_inplace(vector, row, p, -coefficient)
+                _vector_add_inplace(coordinate, row_coordinate, p, -coefficient)
         if not vector:
             return False
 
@@ -157,6 +169,11 @@ class CoordinateBasis:
         self._rows[pivot] = (vector, coordinate)
         return True
 
+    def add_reduced_rows(self, rows: dict[int, Vector]) -> None:
+        """Add already reduced rows with zero quotient coordinates."""
+        for pivot, row in rows.items():
+            self._rows[pivot] = (row, {})
+
     def coordinates(self, vector: Vector) -> Vector:
         """Return quotient coordinates of ``vector`` in this span."""
         p = self.p
@@ -166,8 +183,8 @@ class CoordinateBasis:
             coefficient = vector.get(pivot, 0)
             if coefficient:
                 row, row_coordinate = self._rows[pivot]
-                vector = vector_add(vector, row, p, -coefficient)
-                coordinate = vector_add(coordinate, row_coordinate, p, coefficient)
+                _vector_add_inplace(vector, row, p, -coefficient)
+                _vector_add_inplace(coordinate, row_coordinate, p, coefficient)
         if vector:
             raise ValueError("vector is not in the span")
         return coordinate
@@ -281,4 +298,3 @@ class BitCoordinateBasis:
         if vector:
             raise ValueError("vector is not in the span")
         return coordinate
-

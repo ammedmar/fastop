@@ -14,6 +14,7 @@ from fastop._linear_algebra import (
     Vector,
     clean_vector,
     is_prime,
+    leading_index,
     nullspace,
     rank,
     rref,
@@ -374,16 +375,12 @@ class PrimeFieldCohomology:
         columns = {}
         for degree in range(self.dimension + 1):
             domain_faces = self._faces.get(degree, ())
-            degree_columns = []
-            for domain_index in range(len(domain_faces)):
-                column = {}
-                for target_index, boundary in enumerate(
-                    self._boundary_columns.get(degree + 1, ())
-                ):
-                    coefficient = boundary.get(domain_index, 0)
-                    if coefficient:
-                        column[target_index] = coefficient
-                degree_columns.append(clean_vector(column, self.p))
+            degree_columns = [{} for _ in domain_faces]
+            for target_index, boundary in enumerate(
+                self._boundary_columns.get(degree + 1, ())
+            ):
+                for domain_index, coefficient in boundary.items():
+                    degree_columns[domain_index][target_index] = coefficient % self.p
             columns[degree] = degree_columns
         return columns
 
@@ -393,13 +390,14 @@ class PrimeFieldCohomology:
             faces = self._faces[degree]
             coboundary = self._coboundary_columns[degree]
             cycles = nullspace(coboundary, len(self._faces.get(degree + 1, ())), self.p)
-            boundary_vectors = list(rref(self._coboundary_columns.get(degree - 1, []), self.p).values())
+            boundary_basis = rref(self._coboundary_columns.get(degree - 1, []), self.p)
             if self.reduced and degree == 0 and faces:
-                boundary_vectors.append({index: 1 for index in range(len(faces))})
+                boundary_basis = dict(boundary_basis)
+                reduced_row = {index: 1 for index in range(len(faces))}
+                boundary_basis[leading_index(reduced_row)] = reduced_row
 
             projector = CoordinateBasis(self.p)
-            for boundary in boundary_vectors:
-                projector.add(boundary, {})
+            projector.add_reduced_rows(boundary_basis)
 
             cocycle_basis = []
             for cycle in sorted(cycles, key=_vector_sort_key):
