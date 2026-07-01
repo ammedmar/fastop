@@ -10,8 +10,10 @@ try:
     from fastop._native import (
         column_image_and_kernel_basis as _native_column_image_and_kernel_basis,
     )
+    from fastop._native import coordinate_basis_from_vectors as _native_coordinate_basis_from_vectors
 except ImportError:  # pragma: no cover - depends on optional extension build
     _native_column_image_and_kernel_basis = None
+    _native_coordinate_basis_from_vectors = None
 
 
 def is_prime(value: int) -> bool:
@@ -202,6 +204,19 @@ class CoordinateBasis:
         self._pivots: list[int] = []
         self._pivot_set: set[int] = set()
 
+    @classmethod
+    def from_rows(
+        cls,
+        p: int,
+        rows: dict[int, tuple[Vector, Vector]],
+    ) -> "CoordinateBasis":
+        """Create a coordinate basis from precomputed pivot rows."""
+        basis = cls(p)
+        basis._rows = rows
+        basis._pivots = sorted(rows)
+        basis._pivot_set = set(rows)
+        return basis
+
     def add(self, vector: Vector, coordinate: Vector | None = None) -> bool:
         """Add ``vector`` with its quotient ``coordinate`` if independent."""
         if coordinate is None:
@@ -293,6 +308,39 @@ class CoordinateBasis:
             row, _ = self._rows[pivot]
             _vector_add_inplace(vector, row, p, -coefficient)
             candidate_pivots.update(set(row).intersection(vector, self._pivot_set))
+
+
+def coordinate_basis_from_vectors(
+    p: int,
+    boundary_vectors: list[Vector],
+    cycles: list[Vector],
+) -> tuple[list[Vector], CoordinateBasis]:
+    """Build cohomology representatives and their quotient projector."""
+    if _native_coordinate_basis_from_vectors is not None:
+        cocycle_basis, rows = _native_coordinate_basis_from_vectors(
+            boundary_vectors,
+            cycles,
+            p,
+        )
+        return cocycle_basis, CoordinateBasis.from_rows(p, rows)
+    return _coordinate_basis_from_vectors_python(p, boundary_vectors, cycles)
+
+
+def _coordinate_basis_from_vectors_python(
+    p: int,
+    boundary_vectors: list[Vector],
+    cycles: list[Vector],
+) -> tuple[list[Vector], CoordinateBasis]:
+    projector = CoordinateBasis(p)
+    for boundary in boundary_vectors:
+        projector.add_vector(boundary)
+
+    cocycle_basis = []
+    for cycle in cycles:
+        basis_coordinate = {len(cocycle_basis): 1}
+        if projector.add(cycle, basis_coordinate):
+            cocycle_basis.append(cycle)
+    return cocycle_basis, projector
 
 
 def iter_bits(vector: int):

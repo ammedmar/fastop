@@ -3,6 +3,7 @@ import pytest
 import fastop._linear_algebra as linear_algebra_module
 from fastop._linear_algebra import (
     CoordinateBasis,
+    coordinate_basis_from_vectors,
     column_image_and_kernel_basis,
     column_kernel_basis,
     nullspace,
@@ -68,3 +69,32 @@ def test_coordinate_basis_uses_echelon_rows_for_coordinates():
     assert basis.add({1: 1}, {0: 1})
 
     assert basis.coordinates({2: 3, 1: 4, 0: 3}) == {0: 4}
+
+
+def test_native_coordinate_basis_matches_python_fallback(monkeypatch):
+    if linear_algebra_module._native_coordinate_basis_from_vectors is None:
+        pytest.skip("native extension is not built")
+
+    boundaries = [{2: 1, 0: 1}, {1: 1}]
+    cycles = [{2: 3, 1: 4, 0: 3}, {3: 1, 0: 2}]
+
+    native_cocycles, native_projector = coordinate_basis_from_vectors(
+        5,
+        boundaries,
+        cycles,
+    )
+    monkeypatch.setattr(
+        linear_algebra_module,
+        "_native_coordinate_basis_from_vectors",
+        None,
+    )
+    python_cocycles, python_projector = coordinate_basis_from_vectors(
+        5,
+        boundaries,
+        cycles,
+    )
+
+    assert native_cocycles == python_cocycles
+    assert native_projector.coordinates({2: 3, 1: 4, 0: 3}) == (
+        python_projector.coordinates({2: 3, 1: 4, 0: 3})
+    )

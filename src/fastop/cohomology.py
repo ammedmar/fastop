@@ -14,6 +14,7 @@ from fastop._linear_algebra import (
     Vector,
     clean_vector,
     column_image_and_kernel_basis,
+    coordinate_basis_from_vectors,
     is_prime,
     rank,
     vector_add,
@@ -407,15 +408,11 @@ class PrimeFieldCohomology:
                     {index: 1 for index in range(len(faces))},
                 ]
 
-            projector = CoordinateBasis(self.p)
-            for boundary in boundary_vectors:
-                projector.add_vector(boundary)
-
-            cocycle_basis = []
-            for cycle in sorted(cycles, key=_vector_sort_key):
-                basis_coordinate = {len(cocycle_basis): 1}
-                if projector.add(cycle, basis_coordinate):
-                    cocycle_basis.append(cycle)
+            cocycle_basis, projector = coordinate_basis_from_vectors(
+                self.p,
+                boundary_vectors,
+                sorted(cycles, key=_vector_sort_key),
+            )
 
             all_data[degree] = _DegreeData(
                 faces=faces,

@@ -1229,6 +1229,292 @@ column_image_and_kernel_basis(PyObject *self, PyObject *args)
 }
 
 
+static int
+max_reducible_pivot(PyObject *vector, PyObject *rows, Py_ssize_t *pivot)
+{
+    PyObject *key;
+    PyObject *value;
+    Py_ssize_t position = 0;
+    int seen = 0;
+    Py_ssize_t largest = 0;
+
+    while (PyDict_Next(vector, &position, &key, &value)) {
+        PyObject *row_entry = PyDict_GetItemWithError(rows, key);
+        if (row_entry == NULL && PyErr_Occurred()) {
+            return -1;
+        }
+        if (row_entry == NULL) {
+            continue;
+        }
+        Py_ssize_t index = PyLong_AsSsize_t(key);
+        if (index == -1 && PyErr_Occurred()) {
+            return -1;
+        }
+        if (!seen || index > largest) {
+            largest = index;
+            seen = 1;
+        }
+    }
+
+    if (!seen) {
+        return 0;
+    }
+    *pivot = largest;
+    return 1;
+}
+
+
+static int
+reduce_with_rows(PyObject *vector, PyObject *coordinate, PyObject *rows, long p)
+{
+    while (1) {
+        Py_ssize_t pivot;
+        int found = max_reducible_pivot(vector, rows, &pivot);
+        if (found < 0) {
+            return -1;
+        }
+        if (!found) {
+            return 0;
+        }
+
+        PyObject *pivot_object = PyLong_FromSsize_t(pivot);
+        if (pivot_object == NULL) {
+            return -1;
+        }
+        PyObject *coefficient_object = PyDict_GetItemWithError(vector, pivot_object);
+        PyObject *row_entry = PyDict_GetItemWithError(rows, pivot_object);
+        Py_DECREF(pivot_object);
+        if (
+            (coefficient_object == NULL && PyErr_Occurred())
+            || (row_entry == NULL && PyErr_Occurred())
+            || coefficient_object == NULL
+            || row_entry == NULL
+        ) {
+            if (!PyErr_Occurred()) {
+                PyErr_SetString(PyExc_RuntimeError, "missing reducer pivot");
+            }
+            return -1;
+        }
+
+        long coefficient = PyLong_AsLong(coefficient_object);
+        if (coefficient == -1 && PyErr_Occurred()) {
+            return -1;
+        }
+        PyObject *row = PyTuple_GET_ITEM(row_entry, 0);
+        PyObject *row_coordinate = PyTuple_GET_ITEM(row_entry, 1);
+        if (vector_add_inplace(vector, row, p, -coefficient) < 0) {
+            return -1;
+        }
+        if (
+            coordinate != NULL
+            && vector_add_inplace(coordinate, row_coordinate, p, -coefficient) < 0
+        ) {
+            return -1;
+        }
+    }
+}
+
+
+static int
+add_coordinate_row(PyObject *rows, PyObject *vector_object, PyObject *coordinate_object, long p)
+{
+    PyObject *vector = clean_vector(vector_object, p);
+    PyObject *coordinate;
+    if (coordinate_object == NULL) {
+        coordinate = PyDict_New();
+    } else {
+        coordinate = clean_vector(coordinate_object, p);
+    }
+    if (vector == NULL || coordinate == NULL) {
+        Py_XDECREF(vector);
+        Py_XDECREF(coordinate);
+        return -1;
+    }
+
+    if (reduce_with_rows(vector, coordinate, rows, p) < 0) {
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+    if (PyDict_Size(vector) == 0) {
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return 0;
+    }
+
+    Py_ssize_t pivot;
+    if (leading_index(vector, &pivot) < 0) {
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+    PyObject *pivot_object = PyLong_FromSsize_t(pivot);
+    if (pivot_object == NULL) {
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+    PyObject *pivot_coefficient_object = PyDict_GetItemWithError(vector, pivot_object);
+    if (pivot_coefficient_object == NULL) {
+        if (!PyErr_Occurred()) {
+            PyErr_SetString(PyExc_RuntimeError, "missing coordinate pivot coefficient");
+        }
+        Py_DECREF(pivot_object);
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+    long pivot_coefficient = PyLong_AsLong(pivot_coefficient_object);
+    if (pivot_coefficient == -1 && PyErr_Occurred()) {
+        Py_DECREF(pivot_object);
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+    long inverse = mod_inverse(pivot_coefficient, p);
+    if (inverse == -1 && PyErr_Occurred()) {
+        Py_DECREF(pivot_object);
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+    if (
+        vector_scale_inplace(vector, p, inverse) < 0
+        || vector_scale_inplace(coordinate, p, inverse) < 0
+    ) {
+        Py_DECREF(pivot_object);
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+
+    PyObject *row_entry = PyTuple_New(2);
+    if (row_entry == NULL) {
+        Py_DECREF(pivot_object);
+        Py_DECREF(vector);
+        Py_DECREF(coordinate);
+        return -1;
+    }
+    PyTuple_SET_ITEM(row_entry, 0, vector);
+    PyTuple_SET_ITEM(row_entry, 1, coordinate);
+    int status = PyDict_SetItem(rows, pivot_object, row_entry);
+    Py_DECREF(pivot_object);
+    Py_DECREF(row_entry);
+    if (status < 0) {
+        return -1;
+    }
+    return 1;
+}
+
+
+static PyObject *
+coordinate_basis_from_vectors(PyObject *self, PyObject *args)
+{
+    PyObject *boundary_vectors_object;
+    PyObject *cycles_object;
+    long p;
+
+    if (!PyArg_ParseTuple(args, "OOl", &boundary_vectors_object, &cycles_object, &p)) {
+        return NULL;
+    }
+    PyObject *boundary_vectors = PySequence_Fast(
+        boundary_vectors_object,
+        "boundary vectors must be iterable"
+    );
+    PyObject *cycles = PySequence_Fast(cycles_object, "cycles must be iterable");
+    if (boundary_vectors == NULL || cycles == NULL) {
+        Py_XDECREF(boundary_vectors);
+        Py_XDECREF(cycles);
+        return NULL;
+    }
+
+    PyObject *rows = PyDict_New();
+    PyObject *cocycle_basis = PyList_New(0);
+    if (rows == NULL || cocycle_basis == NULL) {
+        Py_XDECREF(rows);
+        Py_XDECREF(cocycle_basis);
+        Py_DECREF(boundary_vectors);
+        Py_DECREF(cycles);
+        return NULL;
+    }
+
+    Py_ssize_t boundary_count = PySequence_Fast_GET_SIZE(boundary_vectors);
+    PyObject **boundary_items = PySequence_Fast_ITEMS(boundary_vectors);
+    for (Py_ssize_t i = 0; i < boundary_count; i++) {
+        if (add_coordinate_row(rows, boundary_items[i], NULL, p) < 0) {
+            Py_DECREF(rows);
+            Py_DECREF(cocycle_basis);
+            Py_DECREF(boundary_vectors);
+            Py_DECREF(cycles);
+            return NULL;
+        }
+    }
+
+    Py_ssize_t cycle_count = PySequence_Fast_GET_SIZE(cycles);
+    PyObject **cycle_items = PySequence_Fast_ITEMS(cycles);
+    for (Py_ssize_t i = 0; i < cycle_count; i++) {
+        PyObject *coordinate = PyDict_New();
+        PyObject *coordinate_index = PyLong_FromSsize_t(PyList_GET_SIZE(cocycle_basis));
+        PyObject *one = PyLong_FromLong(1);
+        if (coordinate == NULL || coordinate_index == NULL || one == NULL) {
+            Py_XDECREF(coordinate);
+            Py_XDECREF(coordinate_index);
+            Py_XDECREF(one);
+            Py_DECREF(rows);
+            Py_DECREF(cocycle_basis);
+            Py_DECREF(boundary_vectors);
+            Py_DECREF(cycles);
+            return NULL;
+        }
+        if (PyDict_SetItem(coordinate, coordinate_index, one) < 0) {
+            Py_DECREF(coordinate);
+            Py_DECREF(coordinate_index);
+            Py_DECREF(one);
+            Py_DECREF(rows);
+            Py_DECREF(cocycle_basis);
+            Py_DECREF(boundary_vectors);
+            Py_DECREF(cycles);
+            return NULL;
+        }
+        Py_DECREF(coordinate_index);
+        Py_DECREF(one);
+
+        int added = add_coordinate_row(rows, cycle_items[i], coordinate, p);
+        Py_DECREF(coordinate);
+        if (added < 0) {
+            Py_DECREF(rows);
+            Py_DECREF(cocycle_basis);
+            Py_DECREF(boundary_vectors);
+            Py_DECREF(cycles);
+            return NULL;
+        }
+        if (added) {
+            if (PyList_Append(cocycle_basis, cycle_items[i]) < 0) {
+                Py_DECREF(rows);
+                Py_DECREF(cocycle_basis);
+                Py_DECREF(boundary_vectors);
+                Py_DECREF(cycles);
+                return NULL;
+            }
+        }
+    }
+
+    PyObject *answer = PyTuple_New(2);
+    if (answer == NULL) {
+        Py_DECREF(rows);
+        Py_DECREF(cocycle_basis);
+        Py_DECREF(boundary_vectors);
+        Py_DECREF(cycles);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(answer, 0, cocycle_basis);
+    PyTuple_SET_ITEM(answer, 1, rows);
+    Py_DECREF(boundary_vectors);
+    Py_DECREF(cycles);
+    return answer;
+}
+
+
 static PyObject *
 evaluate_source_mod_3_covered(PyObject *self, PyObject *args)
 {
@@ -1499,6 +1785,12 @@ static PyMethodDef NativeMethods[] = {
         column_image_and_kernel_basis,
         METH_VARARGS,
         "Return image and kernel bases using TDA-style column reduction.",
+    },
+    {
+        "coordinate_basis_from_vectors",
+        coordinate_basis_from_vectors,
+        METH_VARARGS,
+        "Build cocycle representatives and coordinate pivot rows.",
     },
     {NULL, NULL, 0, NULL},
 };
