@@ -13,11 +13,9 @@ from fastop._linear_algebra import (
     CoordinateBasis,
     Vector,
     clean_vector,
+    column_image_and_kernel_basis,
     is_prime,
-    leading_index,
-    nullspace,
     rank,
-    rref,
     vector_add,
     vector_scale,
 )
@@ -385,19 +383,30 @@ class PrimeFieldCohomology:
         return columns
 
     def _build_degree_data(self) -> dict[int, _DegreeData]:
+        image_basis_by_degree = {}
+        cycles_by_degree = {}
+        for degree in range(self.dimension + 1):
+            image_basis_by_degree[degree], cycles_by_degree[degree] = (
+                column_image_and_kernel_basis(
+                    self._coboundary_columns[degree],
+                    self.p,
+                )
+            )
+
         all_data = {}
         for degree in range(self.dimension + 1):
             faces = self._faces[degree]
-            coboundary = self._coboundary_columns[degree]
-            cycles = nullspace(coboundary, len(self._faces.get(degree + 1, ())), self.p)
-            boundary_basis = rref(self._coboundary_columns.get(degree - 1, []), self.p)
+            cycles = cycles_by_degree[degree]
+            boundary_vectors = image_basis_by_degree.get(degree - 1, [])
             if self.reduced and degree == 0 and faces:
-                boundary_basis = dict(boundary_basis)
-                reduced_row = {index: 1 for index in range(len(faces))}
-                boundary_basis[leading_index(reduced_row)] = reduced_row
+                boundary_vectors = [
+                    *boundary_vectors,
+                    {index: 1 for index in range(len(faces))},
+                ]
 
             projector = CoordinateBasis(self.p)
-            projector.add_reduced_rows(boundary_basis)
+            for boundary in boundary_vectors:
+                projector.add(boundary, {})
 
             cocycle_basis = []
             for cycle in sorted(cycles, key=_vector_sort_key):

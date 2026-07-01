@@ -2,7 +2,16 @@
 
 from __future__ import annotations
 
+from bisect import insort
+
 Vector = dict[int, int]
+
+try:
+    from fastop._native import (
+        column_image_and_kernel_basis as _native_column_image_and_kernel_basis,
+    )
+except ImportError:  # pragma: no cover - depends on optional extension build
+    _native_column_image_and_kernel_basis = None
 
 
 def is_prime(value: int) -> bool:
@@ -98,6 +107,58 @@ def rref(rows, p: int) -> dict[int, Vector]:
     return basis
 
 
+def column_kernel_basis(columns: list[Vector], p: int) -> list[Vector]:
+    """Return kernel vectors by TDA-style column reduction."""
+    return column_image_and_kernel_basis(columns, p)[1]
+
+
+def column_image_and_kernel_basis(
+    columns: list[Vector],
+    p: int,
+) -> tuple[list[Vector], list[Vector]]:
+    """Return image and kernel bases by TDA-style column reduction."""
+    if _native_column_image_and_kernel_basis is not None:
+        return _native_column_image_and_kernel_basis(columns, p)
+    return _column_image_and_kernel_basis_python(columns, p)
+
+
+def _column_image_and_kernel_basis_python(
+    columns: list[Vector],
+    p: int,
+) -> tuple[list[Vector], list[Vector]]:
+    """Python fallback for TDA-style column reduction."""
+    reduced_columns: list[Vector] = []
+    transforms: list[Vector] = []
+    pivot_to_reduced_column: dict[int, int] = {}
+    cycles = []
+
+    for column_index, column in enumerate(columns):
+        reduced = clean_vector(column, p)
+        transform = {column_index: 1}
+        while reduced:
+            pivot = leading_index(reduced)
+            pivot_column_index = pivot_to_reduced_column.get(pivot)
+            if pivot_column_index is None:
+                break
+            pivot_column = reduced_columns[pivot_column_index]
+            coefficient = reduced[pivot] * pow(pivot_column[pivot], -1, p)
+            _vector_add_inplace(reduced, pivot_column, p, -coefficient)
+            _vector_add_inplace(transform, transforms[pivot_column_index], p, -coefficient)
+
+        if reduced:
+            pivot = leading_index(reduced)
+            inverse = pow(reduced[pivot], -1, p)
+            reduced = vector_scale(reduced, inverse, p)
+            transform = vector_scale(transform, inverse, p)
+            pivot_to_reduced_column[pivot] = len(reduced_columns)
+            reduced_columns.append(reduced)
+            transforms.append(transform)
+        else:
+            cycles.append(clean_vector(transform, p))
+
+    return reduced_columns, cycles
+
+
 def nullspace(columns: list[Vector], codomain_dimension: int, p: int) -> list[Vector]:
     """Return a basis for the kernel of the map with the given columns."""
     return _row_basis_and_nullspace(columns, codomain_dimension, p)[1]
@@ -133,11 +194,13 @@ def _row_basis_and_nullspace(
 
 
 class CoordinateBasis:
-    """A reduced basis whose rows carry quotient coordinates."""
+    """A pivot basis whose rows carry quotient coordinates."""
 
     def __init__(self, p: int) -> None:
         self.p = p
         self._rows: dict[int, tuple[Vector, Vector]] = {}
+        self._pivots: list[int] = []
+        self._pivot_set: set[int] = set()
 
     def add(self, vector: Vector, coordinate: Vector | None = None) -> bool:
         """Add ``vector`` with its quotient ``coordinate`` if independent."""
@@ -146,12 +209,7 @@ class CoordinateBasis:
         p = self.p
         vector = clean_vector(vector, p)
         coordinate = clean_vector(coordinate, p)
-        for pivot in sorted(self._rows, reverse=True):
-            coefficient = vector.get(pivot, 0)
-            if coefficient:
-                row, row_coordinate = self._rows[pivot]
-                _vector_add_inplace(vector, row, p, -coefficient)
-                _vector_add_inplace(coordinate, row_coordinate, p, -coefficient)
+        self._reduce_with_coordinates(vector, coordinate, -1)
         if not vector:
             return False
 
@@ -159,35 +217,52 @@ class CoordinateBasis:
         inverse = pow(vector[pivot], -1, p)
         vector = vector_scale(vector, inverse, p)
         coordinate = vector_scale(coordinate, inverse, p)
-        for other_pivot, (other_row, other_coordinate) in list(self._rows.items()):
-            coefficient = other_row.get(pivot, 0)
-            if coefficient:
-                self._rows[other_pivot] = (
-                    vector_add(other_row, vector, p, -coefficient),
-                    vector_add(other_coordinate, coordinate, p, -coefficient),
-                )
         self._rows[pivot] = (vector, coordinate)
+        insort(self._pivots, pivot)
+        self._pivot_set.add(pivot)
         return True
 
     def add_reduced_rows(self, rows: dict[int, Vector]) -> None:
         """Add already reduced rows with zero quotient coordinates."""
         for pivot, row in rows.items():
             self._rows[pivot] = (row, {})
+        self._pivots = sorted(self._rows)
+        self._pivot_set = set(self._rows)
 
     def coordinates(self, vector: Vector) -> Vector:
         """Return quotient coordinates of ``vector`` in this span."""
         p = self.p
         vector = clean_vector(vector, p)
         coordinate: Vector = {}
-        for pivot in sorted(self._rows, reverse=True):
-            coefficient = vector.get(pivot, 0)
-            if coefficient:
-                row, row_coordinate = self._rows[pivot]
-                _vector_add_inplace(vector, row, p, -coefficient)
-                _vector_add_inplace(coordinate, row_coordinate, p, coefficient)
+        self._reduce_with_coordinates(vector, coordinate, 1)
         if vector:
             raise ValueError("vector is not in the span")
         return coordinate
+
+    def _reduce_with_coordinates(
+        self,
+        vector: Vector,
+        coordinate: Vector,
+        coordinate_sign: int,
+    ) -> None:
+        """Reduce ``vector`` and update quotient ``coordinate`` in place."""
+        p = self.p
+        candidate_pivots = set(vector).intersection(self._pivot_set)
+        while candidate_pivots:
+            pivot = max(candidate_pivots)
+            candidate_pivots.remove(pivot)
+            coefficient = vector.get(pivot, 0)
+            if not coefficient:
+                continue
+            row, row_coordinate = self._rows[pivot]
+            _vector_add_inplace(vector, row, p, -coefficient)
+            _vector_add_inplace(
+                coordinate,
+                row_coordinate,
+                p,
+                coordinate_sign * coefficient,
+            )
+            candidate_pivots.update(set(row).intersection(vector, self._pivot_set))
 
 
 def iter_bits(vector: int):

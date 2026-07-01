@@ -39,6 +39,188 @@ add_mod(PyObject *answer, PyObject *key, long value, long p)
 }
 
 
+static long
+positive_mod(long value, long p)
+{
+    value %= p;
+    if (value < 0) {
+        value += p;
+    }
+    return value;
+}
+
+
+static long
+mod_inverse(long value, long p)
+{
+    long t = 0;
+    long new_t = 1;
+    long r = p;
+    long new_r = positive_mod(value, p);
+
+    while (new_r != 0) {
+        long quotient = r / new_r;
+        long old_t = t;
+        t = new_t;
+        new_t = old_t - quotient * new_t;
+        long old_r = r;
+        r = new_r;
+        new_r = old_r - quotient * new_r;
+    }
+
+    if (r > 1) {
+        PyErr_SetString(PyExc_ValueError, "value is not invertible modulo p");
+        return -1;
+    }
+    return positive_mod(t, p);
+}
+
+
+static PyObject *
+clean_vector(PyObject *vector, long p)
+{
+    if (!PyDict_Check(vector)) {
+        PyErr_SetString(PyExc_TypeError, "vectors must be dictionaries");
+        return NULL;
+    }
+
+    PyObject *clean = PyDict_New();
+    if (clean == NULL) {
+        return NULL;
+    }
+
+    PyObject *key;
+    PyObject *value_object;
+    Py_ssize_t position = 0;
+    while (PyDict_Next(vector, &position, &key, &value_object)) {
+        long value = PyLong_AsLong(value_object);
+        if (value == -1 && PyErr_Occurred()) {
+            Py_DECREF(clean);
+            return NULL;
+        }
+        value = positive_mod(value, p);
+        if (value) {
+            PyObject *new_value = PyLong_FromLong(value);
+            if (new_value == NULL) {
+                Py_DECREF(clean);
+                return NULL;
+            }
+            int status = PyDict_SetItem(clean, key, new_value);
+            Py_DECREF(new_value);
+            if (status < 0) {
+                Py_DECREF(clean);
+                return NULL;
+            }
+        }
+    }
+
+    return clean;
+}
+
+
+static int
+vector_add_inplace(PyObject *left, PyObject *right, long p, long scale)
+{
+    scale = positive_mod(scale, p);
+    if (!scale) {
+        return 0;
+    }
+
+    PyObject *key;
+    PyObject *coefficient_object;
+    Py_ssize_t position = 0;
+    while (PyDict_Next(right, &position, &key, &coefficient_object)) {
+        long coefficient = PyLong_AsLong(coefficient_object);
+        if (coefficient == -1 && PyErr_Occurred()) {
+            return -1;
+        }
+        if (add_mod(left, key, scale * coefficient, p) < 0) {
+            return -1;
+        }
+    }
+
+    return 0;
+}
+
+
+static int
+vector_scale_inplace(PyObject *vector, long p, long scale)
+{
+    scale = positive_mod(scale, p);
+    PyObject *items = PyMapping_Items(vector);
+    if (items == NULL) {
+        return -1;
+    }
+    PyObject *items_fast = PySequence_Fast(items, "vector items must be iterable");
+    Py_DECREF(items);
+    if (items_fast == NULL) {
+        return -1;
+    }
+
+    Py_ssize_t length = PySequence_Fast_GET_SIZE(items_fast);
+    PyObject **entries = PySequence_Fast_ITEMS(items_fast);
+    for (Py_ssize_t i = 0; i < length; i++) {
+        PyObject *entry = entries[i];
+        PyObject *key = PyTuple_GET_ITEM(entry, 0);
+        PyObject *value_object = PyTuple_GET_ITEM(entry, 1);
+        long value = PyLong_AsLong(value_object);
+        if (value == -1 && PyErr_Occurred()) {
+            Py_DECREF(items_fast);
+            return -1;
+        }
+        value = positive_mod(value * scale, p);
+        if (value) {
+            PyObject *new_value = PyLong_FromLong(value);
+            if (new_value == NULL) {
+                Py_DECREF(items_fast);
+                return -1;
+            }
+            int status = PyDict_SetItem(vector, key, new_value);
+            Py_DECREF(new_value);
+            if (status < 0) {
+                Py_DECREF(items_fast);
+                return -1;
+            }
+        } else if (PyDict_DelItem(vector, key) < 0) {
+            Py_DECREF(items_fast);
+            return -1;
+        }
+    }
+
+    Py_DECREF(items_fast);
+    return 0;
+}
+
+
+static int
+leading_index(PyObject *vector, Py_ssize_t *answer)
+{
+    PyObject *key;
+    PyObject *value;
+    Py_ssize_t position = 0;
+    int seen = 0;
+    Py_ssize_t largest = 0;
+
+    while (PyDict_Next(vector, &position, &key, &value)) {
+        Py_ssize_t index = PyLong_AsSsize_t(key);
+        if (index == -1 && PyErr_Occurred()) {
+            return -1;
+        }
+        if (!seen || index > largest) {
+            largest = index;
+            seen = 1;
+        }
+    }
+
+    if (!seen) {
+        PyErr_SetString(PyExc_ValueError, "empty vector has no leading index");
+        return -1;
+    }
+    *answer = largest;
+    return 0;
+}
+
+
 static PyObject *
 selected_face(PyObject *target, PyObject *factor)
 {
@@ -696,6 +878,358 @@ evaluate_all_targets(PyObject *self, PyObject *args)
 
 
 static PyObject *
+column_image_and_kernel_basis(PyObject *self, PyObject *args)
+{
+    PyObject *columns_object;
+    long p;
+
+    if (!PyArg_ParseTuple(args, "Ol", &columns_object, &p)) {
+        return NULL;
+    }
+    if (p <= 1) {
+        PyErr_SetString(PyExc_ValueError, "p must be greater than one");
+        return NULL;
+    }
+
+    PyObject *columns = PySequence_Fast(columns_object, "columns must be iterable");
+    if (columns == NULL) {
+        return NULL;
+    }
+
+    PyObject *reduced_columns = PyList_New(0);
+    PyObject *transforms = PyList_New(0);
+    PyObject *pivot_to_column = PyDict_New();
+    PyObject *cycles = PyList_New(0);
+    if (
+        reduced_columns == NULL
+        || transforms == NULL
+        || pivot_to_column == NULL
+        || cycles == NULL
+    ) {
+        Py_XDECREF(reduced_columns);
+        Py_XDECREF(transforms);
+        Py_XDECREF(pivot_to_column);
+        Py_XDECREF(cycles);
+        Py_DECREF(columns);
+        return NULL;
+    }
+
+    Py_ssize_t column_count = PySequence_Fast_GET_SIZE(columns);
+    PyObject **column_items = PySequence_Fast_ITEMS(columns);
+    for (Py_ssize_t column_index = 0; column_index < column_count; column_index++) {
+        PyObject *reduced = clean_vector(column_items[column_index], p);
+        if (reduced == NULL) {
+            Py_DECREF(reduced_columns);
+            Py_DECREF(transforms);
+            Py_DECREF(pivot_to_column);
+            Py_DECREF(cycles);
+            Py_DECREF(columns);
+            return NULL;
+        }
+
+        PyObject *transform = PyDict_New();
+        PyObject *column_index_object = PyLong_FromSsize_t(column_index);
+        PyObject *one = PyLong_FromLong(1);
+        if (transform == NULL || column_index_object == NULL || one == NULL) {
+            Py_XDECREF(transform);
+            Py_XDECREF(column_index_object);
+            Py_XDECREF(one);
+            Py_DECREF(reduced);
+            Py_DECREF(reduced_columns);
+            Py_DECREF(transforms);
+            Py_DECREF(pivot_to_column);
+            Py_DECREF(cycles);
+            Py_DECREF(columns);
+            return NULL;
+        }
+        if (PyDict_SetItem(transform, column_index_object, one) < 0) {
+            Py_DECREF(transform);
+            Py_DECREF(column_index_object);
+            Py_DECREF(one);
+            Py_DECREF(reduced);
+            Py_DECREF(reduced_columns);
+            Py_DECREF(transforms);
+            Py_DECREF(pivot_to_column);
+            Py_DECREF(cycles);
+            Py_DECREF(columns);
+            return NULL;
+        }
+        Py_DECREF(column_index_object);
+        Py_DECREF(one);
+
+        while (PyDict_Size(reduced)) {
+            Py_ssize_t pivot;
+            if (leading_index(reduced, &pivot) < 0) {
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            PyObject *pivot_object = PyLong_FromSsize_t(pivot);
+            if (pivot_object == NULL) {
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            PyObject *pivot_column_index_object = PyDict_GetItemWithError(
+                pivot_to_column,
+                pivot_object
+            );
+            if (pivot_column_index_object == NULL && PyErr_Occurred()) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            if (pivot_column_index_object == NULL) {
+                Py_DECREF(pivot_object);
+                break;
+            }
+
+            Py_ssize_t pivot_column_index = PyLong_AsSsize_t(pivot_column_index_object);
+            if (pivot_column_index == -1 && PyErr_Occurred()) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            PyObject *pivot_column = PyList_GET_ITEM(reduced_columns, pivot_column_index);
+            PyObject *pivot_transform = PyList_GET_ITEM(transforms, pivot_column_index);
+            PyObject *reduced_coefficient_object = PyDict_GetItemWithError(
+                reduced,
+                pivot_object
+            );
+            PyObject *pivot_coefficient_object = PyDict_GetItemWithError(
+                pivot_column,
+                pivot_object
+            );
+            if (
+                (reduced_coefficient_object == NULL && PyErr_Occurred())
+                || (pivot_coefficient_object == NULL && PyErr_Occurred())
+                || reduced_coefficient_object == NULL
+                || pivot_coefficient_object == NULL
+            ) {
+                if (!PyErr_Occurred()) {
+                    PyErr_SetString(PyExc_RuntimeError, "missing pivot coefficient");
+                }
+                Py_DECREF(pivot_object);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+
+            long reduced_coefficient = PyLong_AsLong(reduced_coefficient_object);
+            long pivot_coefficient = PyLong_AsLong(pivot_coefficient_object);
+            if (
+                (reduced_coefficient == -1 && PyErr_Occurred())
+                || (pivot_coefficient == -1 && PyErr_Occurred())
+            ) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            long inverse = mod_inverse(pivot_coefficient, p);
+            if (inverse == -1 && PyErr_Occurred()) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            long coefficient = positive_mod(reduced_coefficient * inverse, p);
+            if (
+                vector_add_inplace(reduced, pivot_column, p, -coefficient) < 0
+                || vector_add_inplace(transform, pivot_transform, p, -coefficient) < 0
+            ) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            Py_DECREF(pivot_object);
+        }
+
+        if (PyDict_Size(reduced)) {
+            Py_ssize_t pivot;
+            if (leading_index(reduced, &pivot) < 0) {
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            PyObject *pivot_object = PyLong_FromSsize_t(pivot);
+            PyObject *column_position = PyLong_FromSsize_t(PyList_GET_SIZE(reduced_columns));
+            if (pivot_object == NULL || column_position == NULL) {
+                Py_XDECREF(pivot_object);
+                Py_XDECREF(column_position);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+
+            PyObject *pivot_coefficient_object = PyDict_GetItemWithError(
+                reduced,
+                pivot_object
+            );
+            if (pivot_coefficient_object == NULL) {
+                if (!PyErr_Occurred()) {
+                    PyErr_SetString(PyExc_RuntimeError, "missing pivot coefficient");
+                }
+                Py_DECREF(pivot_object);
+                Py_DECREF(column_position);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            long pivot_coefficient = PyLong_AsLong(pivot_coefficient_object);
+            if (pivot_coefficient == -1 && PyErr_Occurred()) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(column_position);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            long inverse = mod_inverse(pivot_coefficient, p);
+            if (inverse == -1 && PyErr_Occurred()) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(column_position);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            if (
+                vector_scale_inplace(reduced, p, inverse) < 0
+                || vector_scale_inplace(transform, p, inverse) < 0
+            ) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(column_position);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            if (
+                PyDict_SetItem(pivot_to_column, pivot_object, column_position) < 0
+                || PyList_Append(reduced_columns, reduced) < 0
+                || PyList_Append(transforms, transform) < 0
+            ) {
+                Py_DECREF(pivot_object);
+                Py_DECREF(column_position);
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            Py_DECREF(pivot_object);
+            Py_DECREF(column_position);
+            Py_DECREF(transform);
+            Py_DECREF(reduced);
+        } else {
+            if (PyList_Append(cycles, transform) < 0) {
+                Py_DECREF(transform);
+                Py_DECREF(reduced);
+                Py_DECREF(reduced_columns);
+                Py_DECREF(transforms);
+                Py_DECREF(pivot_to_column);
+                Py_DECREF(cycles);
+                Py_DECREF(columns);
+                return NULL;
+            }
+            Py_DECREF(transform);
+            Py_DECREF(reduced);
+        }
+    }
+
+    PyObject *answer = PyTuple_New(2);
+    if (answer == NULL) {
+        Py_DECREF(reduced_columns);
+        Py_DECREF(transforms);
+        Py_DECREF(pivot_to_column);
+        Py_DECREF(cycles);
+        Py_DECREF(columns);
+        return NULL;
+    }
+    PyTuple_SET_ITEM(answer, 0, reduced_columns);
+    PyTuple_SET_ITEM(answer, 1, cycles);
+    Py_DECREF(transforms);
+    Py_DECREF(pivot_to_column);
+    Py_DECREF(columns);
+    return answer;
+}
+
+
+static PyObject *
 evaluate_source_mod_3_covered(PyObject *self, PyObject *args)
 {
     PyObject *target_faces;
@@ -959,6 +1493,12 @@ static PyMethodDef NativeMethods[] = {
         evaluate_source_mod_3_covered,
         METH_VARARGS,
         "Evaluate covered p=3 omission patterns from source support.",
+    },
+    {
+        "column_image_and_kernel_basis",
+        column_image_and_kernel_basis,
+        METH_VARARGS,
+        "Return image and kernel bases using TDA-style column reduction.",
     },
     {NULL, NULL, 0, NULL},
 };
