@@ -360,12 +360,15 @@ class PrimeFieldCohomology:
         columns: dict[int, list[Vector]] = {0: [{} for _ in self._faces.get(0, ())]}
         for degree in range(1, self.dimension + 1):
             lower_index = self._face_to_index[degree - 1]
+            signs = tuple(((-1) ** index) % self.p for index in range(degree + 1))
             degree_columns = []
             for simplex in self._faces[degree]:
-                column = {}
-                for sign, face in _codimension_one_faces(simplex, self.p):
-                    column[lower_index[face]] = (column.get(lower_index[face], 0) + sign) % self.p
-                degree_columns.append(clean_vector(column, self.p))
+                column = {
+                    lower_index[simplex[:index] + simplex[index + 1 :]]: signs[index]
+                    for index in range(degree + 1)
+                    if signs[index]
+                }
+                degree_columns.append(column)
             columns[degree] = degree_columns
         return columns
 
@@ -406,7 +409,7 @@ class PrimeFieldCohomology:
 
             projector = CoordinateBasis(self.p)
             for boundary in boundary_vectors:
-                projector.add(boundary, {})
+                projector.add_vector(boundary)
 
             cocycle_basis = []
             for cycle in sorted(cycles, key=_vector_sort_key):

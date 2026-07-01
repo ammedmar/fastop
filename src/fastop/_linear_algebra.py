@@ -222,6 +222,22 @@ class CoordinateBasis:
         self._pivot_set.add(pivot)
         return True
 
+    def add_vector(self, vector: Vector) -> bool:
+        """Add ``vector`` with zero quotient coordinate if independent."""
+        p = self.p
+        vector = clean_vector(vector, p)
+        self._reduce_vector(vector)
+        if not vector:
+            return False
+
+        pivot = leading_index(vector)
+        inverse = pow(vector[pivot], -1, p)
+        vector = vector_scale(vector, inverse, p)
+        self._rows[pivot] = (vector, {})
+        insort(self._pivots, pivot)
+        self._pivot_set.add(pivot)
+        return True
+
     def add_reduced_rows(self, rows: dict[int, Vector]) -> None:
         """Add already reduced rows with zero quotient coordinates."""
         for pivot, row in rows.items():
@@ -262,6 +278,20 @@ class CoordinateBasis:
                 p,
                 coordinate_sign * coefficient,
             )
+            candidate_pivots.update(set(row).intersection(vector, self._pivot_set))
+
+    def _reduce_vector(self, vector: Vector) -> None:
+        """Reduce ``vector`` in place without tracking quotient coordinates."""
+        p = self.p
+        candidate_pivots = set(vector).intersection(self._pivot_set)
+        while candidate_pivots:
+            pivot = max(candidate_pivots)
+            candidate_pivots.remove(pivot)
+            coefficient = vector.get(pivot, 0)
+            if not coefficient:
+                continue
+            row, _ = self._rows[pivot]
+            _vector_add_inplace(vector, row, p, -coefficient)
             candidate_pivots.update(set(row).intersection(vector, self._pivot_set))
 
 
