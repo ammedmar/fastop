@@ -12,11 +12,11 @@ from fastop._cochain_evaluation import (
 from fastop._linear_algebra import (
     CoordinateBasis,
     Vector,
+    add_to_basis,
     clean_vector,
     column_image_and_kernel_basis,
     coordinate_basis_from_vectors,
     is_prime,
-    rank,
     vector_add,
     vector_scale,
 )
@@ -244,15 +244,31 @@ class PrimeFieldCohomology:
         algorithm: str = "auto",
     ) -> int:
         """Return the rank of the selected Steenrod operation from ``H^degree``."""
-        return rank(
-            self.operation_matrix(
-                degree,
+        self._validate_operation_index(r)
+        if not isinstance(bockstein, bool):
+            raise TypeError("bockstein must be a boolean")
+        if self.p == 2 and bockstein:
+            raise NotImplementedError("Bockstein operations require an odd prime")
+        if not self._satisfies_instability_bound(degree, r, bockstein=bockstein):
+            return 0
+
+        source_rank = self.betti_number(degree)
+        target_degree = self._operation_target_degree(degree, r, bockstein=bockstein)
+        target_rank = self.betti_number(target_degree)
+        if source_rank == 0 or target_rank == 0:
+            return 0
+
+        image_basis: dict[int, Vector] = {}
+        for index in range(source_rank):
+            basis_element = self.element({degree: {index: 1}})
+            image = basis_element.operation(
                 r,
                 bockstein=bockstein,
                 algorithm=algorithm,
-            ),
-            self.p,
-        )
+            )._coordinates.get(target_degree, {})
+            if add_to_basis(image_basis, image, self.p) and len(image_basis) == target_rank:
+                return target_rank
+        return len(image_basis)
 
     def _square_homogeneous(
         self, element: "PrimeFieldCohomologyElement", degree: int, k: int
@@ -302,6 +318,14 @@ class PrimeFieldCohomology:
     def _odd_primary_missing_vertices(self, r: int, *, bockstein: bool) -> int:
         return 2 * r * (self.p - 1) + int(bockstein)
 
+    def _satisfies_instability_bound(self, degree: int, r: int, *, bockstein: bool) -> bool:
+        operation_degree = self.convention * r
+        if operation_degree < 0:
+            return False
+        if self.p == 2:
+            return not bockstein and operation_degree <= degree
+        return 2 * operation_degree + int(bockstein) <= degree
+
     def _oddp_operation_index(self, r: int) -> int:
         return -r
 
@@ -350,6 +374,8 @@ class PrimeFieldCohomology:
     ) -> "PrimeFieldCohomologyElement":
         operation_degree = self.convention * r
         if operation_degree < 0:
+            return self.zero()
+        if 2 * operation_degree + int(bockstein) > degree:
             return self.zero()
 
         missing_vertices_per_factor = self._odd_primary_missing_vertices(

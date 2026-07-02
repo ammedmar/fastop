@@ -140,8 +140,8 @@ def test_odd_primary_default_auto_matches_all_targets():
 
 
 def test_odd_primary_operation_uses_oddp_universal_conventions(monkeypatch):
-    cohomology = spaces.complex_projective_plane().cohomology(p=5)
-    one = cohomology.basis(0)[0]
+    cohomology = spaces.moore_space(3).cohomology(p=3)
+    x = cohomology.basis(1)[0]
     calls = []
 
     class FakeSteenrod:
@@ -154,9 +154,8 @@ def test_odd_primary_operation_uses_oddp_universal_conventions(monkeypatch):
     fake_oddp.Steenrod = FakeSteenrod
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
-    assert one.operation(0, bockstein=True, algorithm="source_focused").is_zero()
-    assert calls == [(5, 0, 0, True)]
-    assert cohomology.operation_rank(0, 0, bockstein=True) == 0
+    assert x.operation(0, bockstein=True, algorithm="source_focused").is_zero()
+    assert calls == [(3, 0, -1, True)]
 
 
 def test_odd_primary_vanishing_target_degree_does_not_require_oddp(monkeypatch):
@@ -166,6 +165,16 @@ def test_odd_primary_vanishing_target_degree_does_not_require_oddp(monkeypatch):
 
     assert x.operation(1).is_zero()
     assert cohomology.operation_rank(2, 1) == 0
+
+
+def test_operation_instability_bounds_are_enforced_before_evaluation():
+    mod_two = spaces.real_projective_plane().cohomology(p=2)
+    odd = spaces.complex_projective_plane().cohomology(p=3)
+
+    assert mod_two._satisfies_instability_bound(1, 1, bockstein=False)
+    assert not mod_two._satisfies_instability_bound(1, 2, bockstein=False)
+    assert odd._satisfies_instability_bound(2, 1, bockstein=False)
+    assert not odd._satisfies_instability_bound(1, 1, bockstein=True)
 
 
 def test_basis_elements_have_python_style_squares():
