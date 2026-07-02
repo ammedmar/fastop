@@ -34,6 +34,26 @@ class _DegreeData:
     projector: CoordinateBasis
 
 
+class _DegreeDataCache(dict[int, _DegreeData]):
+    """Lazy degree-data cache for a cohomology object."""
+
+    def __init__(self, parent: "PrimeFieldCohomology"):
+        super().__init__()
+        self._parent = parent
+
+    def __missing__(self, degree: int) -> _DegreeData:
+        data = self._parent._build_degree_data_for_degree(degree)
+        if data is None:
+            raise KeyError(degree)
+        self[degree] = data
+        return data
+
+    def get(self, degree: int, default=None):
+        if isinstance(degree, int) and 0 <= degree <= self._parent.dimension:
+            return self[degree]
+        return default
+
+
 class PrimeFieldCohomology:
     """Cohomology of a finite simplicial complex over ``F_p``."""
 
@@ -63,7 +83,9 @@ class PrimeFieldCohomology:
         }
         self._boundary_columns = self._build_boundary_columns()
         self._coboundary_columns = self._build_coboundary_columns()
-        self._degree_data = self._build_degree_data()
+        self._image_basis_by_degree: dict[int, list[Vector]] = {}
+        self._cycles_by_degree: dict[int, list[Vector]] = {}
+        self._degree_data = _DegreeDataCache(self)
         self._universal_operations = {}
 
     @property
@@ -387,41 +409,50 @@ class PrimeFieldCohomology:
         return columns
 
     def _build_degree_data(self) -> dict[int, _DegreeData]:
-        image_basis_by_degree = {}
-        cycles_by_degree = {}
-        for degree in range(self.dimension + 1):
-            image_basis_by_degree[degree], cycles_by_degree[degree] = (
-                column_image_and_kernel_basis(
-                    self._coboundary_columns[degree],
-                    self.p,
-                )
-            )
+        return {
+            degree: self._degree_data[degree]
+            for degree in range(self.dimension + 1)
+        }
 
-        all_data = {}
-        for degree in range(self.dimension + 1):
-            faces = self._faces[degree]
-            cycles = cycles_by_degree[degree]
-            boundary_vectors = image_basis_by_degree.get(degree - 1, [])
-            if self.reduced and degree == 0 and faces:
-                boundary_vectors = [
-                    *boundary_vectors,
-                    {index: 1 for index in range(len(faces))},
-                ]
+    def _image_and_cycles(self, degree: int) -> tuple[list[Vector], list[Vector]]:
+        cached_image = self._image_basis_by_degree.get(degree)
+        cached_cycles = self._cycles_by_degree.get(degree)
+        if cached_image is not None and cached_cycles is not None:
+            return cached_image, cached_cycles
+        image_basis, cycles = column_image_and_kernel_basis(
+            self._coboundary_columns[degree],
+            self.p,
+        )
+        self._image_basis_by_degree[degree] = image_basis
+        self._cycles_by_degree[degree] = cycles
+        return image_basis, cycles
 
-            cocycle_basis, projector = coordinate_basis_from_vectors(
-                self.p,
-                boundary_vectors,
-                sorted(cycles, key=_vector_sort_key),
-            )
+    def _build_degree_data_for_degree(self, degree: int) -> _DegreeData | None:
+        if degree < 0 or degree > self.dimension:
+            return None
+        _, cycles = self._image_and_cycles(degree)
+        if degree == 0:
+            boundary_vectors = []
+        else:
+            boundary_vectors, _ = self._image_and_cycles(degree - 1)
+        if self.reduced and degree == 0 and self._faces[degree]:
+            boundary_vectors = [
+                *boundary_vectors,
+                {index: 1 for index in range(len(self._faces[degree]))},
+            ]
 
-            all_data[degree] = _DegreeData(
-                faces=faces,
-                face_to_index=self._face_to_index[degree],
-                cocycle_basis=tuple(cocycle_basis),
-                projector=projector,
-            )
-        return all_data
+        cocycle_basis, projector = coordinate_basis_from_vectors(
+            self.p,
+            boundary_vectors,
+            sorted(cycles, key=_vector_sort_key),
+        )
 
+        return _DegreeData(
+            faces=self._faces[degree],
+            face_to_index=self._face_to_index[degree],
+            cocycle_basis=tuple(cocycle_basis),
+            projector=projector,
+        )
 
 class PrimeFieldCohomologyElement:
     """An element of a cohomology vector space over ``F_p``."""

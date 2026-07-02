@@ -131,7 +131,52 @@ def evaluate_source_mod_2(
     cocycle_support: list["Simplex"] | tuple["Simplex", ...],
     target_simplices: set["Simplex"] | frozenset["Simplex"],
 ) -> set["Simplex"]:
-    """Evaluate the current source-focused mod-2 square support rule."""
+    """Evaluate the source-focused mod-2 square support rule."""
+    support_by_length: dict[int, list[tuple["Simplex", set[int]]]] = {}
+    for face in cocycle_support:
+        support_by_length.setdefault(len(face), []).append((face, set(face)))
+
+    answer: set["Simplex"] = set()
+    for source_length, support in support_by_length.items():
+        overlap_length = 2 * source_length - target_length
+        if overlap_length < 0 or overlap_length > source_length:
+            continue
+
+        buckets: dict["Simplex", list[tuple["Simplex", set[int]]]] = {}
+        for face, vertices in support:
+            for overlap in combinations(face, overlap_length):
+                buckets.setdefault(overlap, []).append((face, vertices))
+
+        for candidates in buckets.values():
+            for left, right in combinations(candidates, 2):
+                _, left_vertices = left
+                _, right_vertices = right
+                union = left_vertices | right_vertices
+                if len(union) != target_length:
+                    continue
+
+                simplex = tuple(sorted(union))
+                if simplex not in target_simplices:
+                    continue
+
+                if _mod2_square_pair_contributes(
+                    simplex,
+                    left_vertices,
+                    right_vertices,
+                ):
+                    if simplex in answer:
+                        answer.remove(simplex)
+                    else:
+                        answer.add(simplex)
+    return answer
+
+
+def _evaluate_source_mod_2_bruteforce(
+    target_length: int,
+    cocycle_support: list["Simplex"] | tuple["Simplex", ...],
+    target_simplices: set["Simplex"] | frozenset["Simplex"],
+) -> set["Simplex"]:
+    """Evaluate the mod-2 square support rule by checking all source pairs."""
     answer: set["Simplex"] = set()
     for left, right in combinations(cocycle_support, 2):
         left_vertices = set(left)
@@ -144,24 +189,33 @@ def evaluate_source_mod_2(
         if simplex not in target_simplices:
             continue
 
-        left_only = left_vertices - right_vertices
-        right_only = right_vertices - left_vertices
-        symmetric_difference = sorted(left_only | right_only)
-        indices = {}
-        for vertex in symmetric_difference:
-            indices[vertex] = (
-                simplex.index(vertex) + symmetric_difference.index(vertex)
-            ) % 2
-        left_indices = {indices[vertex] for vertex in left_only}
-        right_indices = {indices[vertex] for vertex in right_only}
-        if (left_indices == {0} and right_indices == {1}) or (
-            left_indices == {1} and right_indices == {0}
-        ):
+        if _mod2_square_pair_contributes(simplex, left_vertices, right_vertices):
             if simplex in answer:
                 answer.remove(simplex)
             else:
                 answer.add(simplex)
     return answer
+
+
+def _mod2_square_pair_contributes(
+    simplex: "Simplex",
+    left_vertices: set[int],
+    right_vertices: set[int],
+) -> bool:
+    """Return whether one source pair contributes to one mod-2 target."""
+    left_only = left_vertices - right_vertices
+    right_only = right_vertices - left_vertices
+    symmetric_difference = sorted(left_only | right_only)
+    indices = {}
+    for vertex in symmetric_difference:
+        indices[vertex] = (
+            simplex.index(vertex) + symmetric_difference.index(vertex)
+        ) % 2
+    left_indices = {indices[vertex] for vertex in left_only}
+    right_indices = {indices[vertex] for vertex in right_only}
+    return (left_indices == {0} and right_indices == {1}) or (
+        left_indices == {1} and right_indices == {0}
+    )
 
 
 def evaluate_all_targets(

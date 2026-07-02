@@ -1,5 +1,10 @@
 from fastop import spaces
-from fastop._cochain_evaluation import evaluate_source_mod_2
+from itertools import combinations
+
+from fastop._cochain_evaluation import (
+    _evaluate_source_mod_2_bruteforce,
+    evaluate_source_mod_2,
+)
 
 
 def test_source_mod_2_evaluator_detects_basic_square_target():
@@ -33,3 +38,14 @@ def test_source_mod_2_evaluator_matches_cp2_square_projection():
     }
 
     assert cohomology.project_cocycle(4, target_vector) == cohomology.basis(4)[0]
+
+
+def test_source_mod_2_indexed_evaluator_matches_bruteforce_on_dense_support():
+    support = tuple(combinations(range(8), 4))
+    targets = set(combinations(range(8), 6))
+
+    assert evaluate_source_mod_2(6, support, targets) == _evaluate_source_mod_2_bruteforce(
+        6,
+        support,
+        targets,
+    )
