@@ -174,3 +174,31 @@ def test_symmetric_cube_of_genus_two_surface_matches_macdonald_betti_numbers():
         6: 1,
     }
     assert cohomology.operation_rank(2, 1) == 1
+
+
+def test_symmetric_fifth_power_of_sphere_is_cp5_at_prime_five():
+    symmetric_fifth = spaces.symmetric_product_of_surface(0, power=5)
+    cohomology = symmetric_fifth.cohomology(p=5)
+
+    assert symmetric_fifth.f_vector() == (
+        1,
+        0,
+        5,
+        40,
+        271,
+        1197,
+        3381,
+        5985,
+        6405,
+        3780,
+        945,
+    )
+    assert cohomology.betti_numbers() == {
+        0: 1,
+        2: 1,
+        4: 1,
+        6: 1,
+        8: 1,
+        10: 1,
+    }
+    assert cohomology.operation_rank(2, 1) == 1

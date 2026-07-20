@@ -380,13 +380,12 @@ class SimplicialSet:
                     reference.operator,
                 ),
             ))
-            labels_by_degree.append(tuple(
-                label
-                for label in combinations_with_replacement(references, power)
-                if not _common_degeneracies(tuple(
-                    component.operator for component in label
-                ))
-            ))
+            labels_by_degree.append(tuple(_symmetric_labels(
+                references,
+                power,
+                total_degree=total_degree,
+                max_base_degree=self.dimension,
+            )))
 
         label_indices = tuple(
             {label: index for index, label in enumerate(labels)}
@@ -630,3 +629,52 @@ def _normalize_symmetric_reference(
         label_indices[base_degree][base_label],
         quotient_operator,
     )
+
+
+def _symmetric_labels(
+    references: tuple[SimplexReference, ...],
+    power: int,
+    *,
+    total_degree: int,
+    max_base_degree: int,
+):
+    """Yield unordered tuples with no common degeneracy.
+
+    If ``r`` factors remain, they can remove at most
+    ``r * max_base_degree`` common degeneracy positions.  Applying this
+    bound during generation avoids visiting the overwhelmingly many tuples
+    that can only remain degenerate, especially in fifth symmetric powers.
+    """
+    masks = tuple(
+        sum(
+            1 << position
+            for position in _degeneracy_positions(reference.operator)
+        )
+        for reference in references
+    )
+    prefix: list[SimplexReference] = []
+
+    def generate(start: int, remaining: int, common_mask: int):
+        if remaining == 0:
+            if common_mask == 0:
+                yield tuple(prefix)
+            return
+        if common_mask.bit_count() > remaining * max_base_degree:
+            return
+        if common_mask == 0:
+            for suffix in combinations_with_replacement(
+                references[start:],
+                remaining,
+            ):
+                yield tuple(prefix) + suffix
+            return
+
+        for index in range(start, len(references)):
+            next_mask = common_mask & masks[index]
+            if next_mask.bit_count() > (remaining - 1) * max_base_degree:
+                continue
+            prefix.append(references[index])
+            yield from generate(index, remaining - 1, next_mask)
+            prefix.pop()
+
+    yield from generate(0, power, (1 << total_degree) - 1)
