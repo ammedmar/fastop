@@ -1,28 +1,34 @@
 API reference
 =============
 
-The following pages are rendered directly from the public source docstrings.
+The following sections are rendered directly from the public source
+docstrings. The class directives explicitly include their public methods; use
+the workflow pages first when deciding which class to construct.
 
 Core models
 -----------
 
-.. automodule:: fastop.delta_complex
+.. autoclass:: fastop.SimplicialComplex
    :members:
-   :undoc-members:
+   :special-members: __init__
 
-.. automodule:: fastop.simplicial
+.. autoclass:: fastop.DeltaComplex
    :members:
-   :undoc-members:
+   :special-members: __init__
 
-.. automodule:: fastop.simplicial_set
+.. autoclass:: fastop.SimplicialSet
    :members:
-   :undoc-members:
+   :special-members: __init__
+
+.. autoclass:: fastop.SymmetricPowerSimplicialSet
+   :members:
 
 Finite quotients
 ----------------
 
-.. automodule:: fastop.group_action
+.. autoclass:: fastop.FiniteGroupAction
    :members:
+   :special-members: __init__
 
 Space constructors
 ------------------
@@ -33,5 +39,8 @@ Space constructors
 Cohomology operations
 ----------------------
 
-.. automodule:: fastop.cohomology
+.. autoclass:: fastop.PrimeFieldCohomology
+   :members:
+
+.. autoclass:: fastop.PrimeFieldCohomologyElement
    :members:

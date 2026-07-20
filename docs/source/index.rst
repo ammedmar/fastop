@@ -3,15 +3,17 @@ fastop
 
 Fast cohomology-operation computations on finite simplicial data.
 
-The generated reference is built from the package docstrings, so it stays in
-step with the public API. The accompanying narrative explains how the three
-input models, symmetric products, and finite quotients fit together.
+This guide starts with the input format you already have, then shows how to
+compute cohomology operations. The reference is generated from the public
+docstrings, but the workflow pages are the place to begin.
 
 .. toctree::
    :maxdepth: 2
 
    getting-started
-   models
+   input-models
+   sage
+   quotients
    operations
    reference
    notes
