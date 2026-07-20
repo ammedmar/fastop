@@ -34,6 +34,22 @@ a = M.basis(1)[0]
 assert a.operation(0, bockstein=True, algorithm="prime-three") == M.basis(2)[0]
 ```
 
+The catalog also contains the matching complex (M_7), a naturally
+occurring odd-primary example, and simplicial suspension can move a known
+operation into a range where it is not a cup power:
+
+```python
+M7 = spaces.matching_complex(7).cohomology(p=3)
+assert M7.operation_rank(1, 0, bockstein=True) == 1
+
+suspended = spaces.complex_projective_space(3).suspension(2)
+H = suspended.cohomology(p=3)
+assert H.operation_rank(4, 1) == 1
+```
+
+The implementation roadmap for face-map input, compact quotients, and the
+six-manifold search is recorded in [docs/roadmap.md](docs/roadmap.md).
+
 ## Development
 
 ```bash

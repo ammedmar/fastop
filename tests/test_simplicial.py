@@ -19,6 +19,28 @@ def test_complex_generates_all_faces():
     assert complex_.faces(2) == frozenset({(0, 1, 2)})
 
 
+def test_suspension_joins_with_a_zero_sphere():
+    circle = spaces.sphere(1)
+    suspended = circle.suspension()
+
+    assert suspended.dimension == 2
+    assert len(suspended.vertices) == 5
+    assert len(suspended.facets) == 6
+    assert suspended.cohomology().betti_numbers() == {0: 1, 2: 1}
+    assert circle.suspension(0) is circle
+
+
+def test_suspension_rejects_invalid_iteration_counts():
+    circle = spaces.sphere(1)
+
+    with pytest.raises(TypeError, match="integer"):
+        circle.suspension(1.5)
+    with pytest.raises(TypeError, match="integer"):
+        circle.suspension(True)
+    with pytest.raises(ValueError, match="nonnegative"):
+        circle.suspension(-1)
+
+
 def test_rejects_invalid_facets():
     with pytest.raises(ValueError, match="at least one"):
         SimplicialComplex([])
@@ -237,6 +259,25 @@ def test_complex_projective_space_catalog_includes_cp2_and_cp3():
     assert cp3.dimension == 6
     assert len(cp3.vertices) == 18
     assert len(cp3.facets) == 622
+
+
+def test_matching_complex_m7_records_a_natural_mod_three_bockstein():
+    m7 = spaces.matching_complex(7)
+    cohomology = m7.cohomology(p=3)
+
+    assert m7.dimension == 2
+    assert len(m7.vertices) == 21
+    assert len(m7.facets) == 105
+    assert cohomology.betti_numbers() == {0: 1, 1: 1, 2: 21}
+    assert cohomology.operation_rank(1, 0, bockstein=True) == 1
+
+
+def test_suspended_cp3_preserves_the_nonzero_reduced_power():
+    suspended = spaces.complex_projective_space(3).suspension()
+    cohomology = suspended.cohomology(p=3)
+
+    assert cohomology.betti_numbers() == {0: 1, 3: 1, 5: 1, 7: 1}
+    assert cohomology.operation_rank(3, 1) == 1
 
 
 def test_moore_space_catalog_includes_mod_three_example():

@@ -67,6 +67,27 @@ class SimplicialComplex:
         """
         return PrimeFieldCohomology(self, p=p, reduced=reduced, convention=convention)
 
+    def suspension(self, times: int = 1) -> "SimplicialComplex":
+        """Return an iterated simplicial suspension.
+
+        Each suspension is the join with a new zero-sphere.  New vertices are
+        assigned consecutive labels above the largest label already present.
+        """
+        if not isinstance(times, int) or isinstance(times, bool):
+            raise TypeError("times must be an integer")
+        if times < 0:
+            raise ValueError("times must be nonnegative")
+
+        answer = self
+        for _ in range(times):
+            left = max(answer.vertices) + 1
+            right = left + 1
+            answer = SimplicialComplex(
+                [facet + (left,) for facet in answer.facets]
+                + [facet + (right,) for facet in answer.facets]
+            )
+        return answer
+
     def _build_faces(self) -> dict[int, frozenset[Simplex]]:
         faces: dict[int, set[Simplex]] = {}
         for facet in self.facets:
