@@ -12,12 +12,13 @@ through the public `fastop` API.
 | L⁷(3) | 800 | `(1, 1, 1, 1, 1, 1, 1, 1)` | rank-one βP⁰ and P¹ |
 | Sym³(S²) = CP³ | 84 | `(1, 0, 1, 0, 1, 0, 1)` | rank-one P¹: H² → H⁶ |
 | Sym³(T²) | 1,638 | `(1, 2, 2, 2, 2, 2, 1)` | rank-one P¹: H² → H⁶ |
+| Sym³(Σ₂) | 41,478 | `(1, 4, 7, 8, 7, 4, 1)` | rank-one P¹: H² → H⁶ |
 
 The first four cases provide ground truth and a suspension stress test.
 Sym³(S²) validates the simplicial-set product and quotient pipeline against
-CP³. Sym³(T²) is the more interesting example in the wild: a naturally
-occurring six-manifold, built as a compact quotient, in which the computation
-finds a nontrivial odd-primary operation.
+CP³. The surface sequence Sym³(Σ_g) then holds the dimension and operation
+fixed while increasing both topology and computational complexity. Genus two
+is covered by the regression suite; genus three is an explicit extended run.
 
 ## Reference timings
 
@@ -27,15 +28,24 @@ guarantees.
 
 | Model | Build | Cohomology | Warm operation |
 | --- | ---: | ---: | ---: |
-| M₇ | 0.000191 s | 0.000679 s | 0.000070 s |
-| ΣCP³ | 0.019261 s | 0.135493 s | 0.001237 s |
-| Σ²CP³ | 0.091220 s | 0.467672 s | 0.015326 s |
-| L⁷(3) | 0.011986 s | 0.003781 s | 0.000100–0.000161 s |
-| Sym³(S²) | 0.032990 s | 0.000212 s | 0.000129 s |
-| Sym³(T²) | 0.565474 s | 0.016900 s | 0.000285 s |
+| M₇ | 0.000197 s | 0.000761 s | 0.000078 s |
+| ΣCP³ | 0.021379 s | 0.147362 s | 0.001332 s |
+| Σ²CP³ | 0.098188 s | 0.507693 s | 0.016326 s |
+| L⁷(3) | 0.013023 s | 0.004228 s | 0.000111–0.000172 s |
+| Sym³(S²) | 0.008316 s | 0.000245 s | 0.000142 s |
+| Sym³(T²) | 0.129659 s | 0.016254 s | 0.000746 s |
 
 Reproduce the run from the repository root with:
 
 ```bash
 python benchmarks/showcase.py --repeats 5
+```
+
+Direct construction of unordered symmetric simplices reduced the median
+Sym³(T²) build from 0.565 seconds in the first implementation to 0.130
+seconds. Run the expanding genus family separately with:
+
+```bash
+python benchmarks/symmetric_surfaces.py
+python benchmarks/symmetric_surfaces.py 3
 ```

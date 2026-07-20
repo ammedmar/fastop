@@ -49,11 +49,27 @@ finite simplicial sets, including compact quotients and symmetric products.
 - Reproducible construction, cohomology, and operation timings live in
   `benchmarks/showcase.py`.
 
-## Next search family
+## 5. Symmetric cubes across surface genus — complete
 
-Generalized Bott threefolds P(O ⊕ O(k)) → CP² are the next structured
-family. Their cohomology rings can prefilter parameters before a simplicial
-model is constructed: parameters not divisible by 3 are the first candidates
-for a degree-two class with nonzero cube modulo 3. The search should retain
-the present two-stage pattern: use ring-level algebra as a cheap screen, then
-run cochain-level operations only on compact models that pass it.
+- Compact one-vertex models of the closed orientable surface Σ_g have
+  f-vector `(1, 6g - 3, 4g - 2)` for positive genus.
+- `symmetric_product_of_surface(genus, power=3)` exposes the complete family.
+- Symmetric powers are built directly from unordered simplex tuples rather
+  than by constructing the ordered product and then quotienting it.
+- Sym³(Σ₂) has 41,478 cells, measured mod-3 Betti numbers
+  `(1, 4, 7, 8, 7, 4, 1)`, and rank-one P¹: H² → H⁶.
+- The first unstable case Sym³(Σ₃) has 189,626 cells and also computes a
+  rank-one P¹: H² → H⁶. Full middle-degree cohomology is deliberately left
+  out of the default regression suite because it is much more expensive.
+
+## Next prime: p = 5
+
+The next search will keep the surface family and increase the symmetric
+power. Sym⁵(S²) = CP⁵ provides ground truth for
+P¹: H² → H¹⁰, where the unstable identity gives P¹(x) = x⁵. Higher-genus
+Sym⁵(Σ_g) will then be the search family. Before constructing those models,
+the direct unordered algorithm will need a multiplicity-based enumerator so
+it does not iterate over every five-element tuple.
+
+Generalized Bott threefolds remain a possible later family, but are postponed
+until the symmetric-product program at primes 3 and 5 has been explored.

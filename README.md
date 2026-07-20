@@ -83,14 +83,20 @@ CP3 = spaces.minimal_simplicial_sphere(2).symmetric_power(3)
 assert CP3.f_vector() == (1, 0, 3, 10, 25, 30, 15)
 assert CP3.cohomology(p=3).operation_rank(2, 1) == 1
 
-X = spaces.symmetric_product_of_torus(3)
+X = spaces.symmetric_product_of_surface(genus=1, power=3)
 assert X.f_vector() == (1, 19, 126, 380, 572, 420, 120)
 assert X.cohomology(p=3).operation_rank(2, 1) == 1
+
+genus_two = spaces.symmetric_product_of_surface(genus=2)
+assert sum(genus_two.f_vector()) == 41_478
+assert genus_two.cohomology(p=3).operation_rank(2, 1) == 1
 ```
 
 Run `python benchmarks/showcase.py` for reproducible construction,
 cohomology, and operation timings on all showcase models. A reference run and
 the role of each example are recorded in [docs/showcase.md](docs/showcase.md).
+The genus expansion and its extended benchmark are described in
+[docs/symmetric-surfaces.md](docs/symmetric-surfaces.md).
 
 ## Development
 
