@@ -13,6 +13,8 @@ through the public `fastop` API.
 | Sym³(S²) = CP³ | 84 | `(1, 0, 1, 0, 1, 0, 1)` | rank-one P¹: H² → H⁶ |
 | Sym³(T²) | 1,638 | `(1, 2, 2, 2, 2, 2, 1)` | rank-one P¹: H² → H⁶ |
 | Sym³(Σ₂) | 41,478 | `(1, 4, 7, 8, 7, 4, 1)` | rank-one P¹: H² → H⁶ |
+| Sym⁵(S²) = CP⁵ | 22,010 | one class in even degrees 0–10 | rank-one mod-5 P¹ |
+| Sym⁵(T²) | 1,797,894 | measured `b₂=2`, `b₁₀=1` | rank-one mod-5 P¹ |
 
 The first four cases provide ground truth and a suspension stress test.
 Sym³(S²) validates the simplicial-set product and quotient pipeline against
@@ -48,4 +50,12 @@ seconds. Run the expanding genus family separately with:
 ```bash
 python benchmarks/symmetric_surfaces.py
 python benchmarks/symmetric_surfaces.py 3
+```
+
+The prime-five runs use degree-lazy cohomology and compact symmetric cell
+labels. Reproduce them with:
+
+```bash
+python benchmarks/prime_five.py
+python benchmarks/prime_five.py --lens
 ```

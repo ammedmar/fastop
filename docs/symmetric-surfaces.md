@@ -68,7 +68,9 @@ performance target.
 
 ## The p = 5 continuation
 
-The next prime suggests the parallel family Sym⁵(Σ_g). The ground-truth case
-is Sym⁵(S²) = CP⁵, with P¹: H² → H¹⁰ and P¹(x) = x⁵. Higher genus will require
-a multiplicity-based symmetric-simplex enumerator before the cochain search
-is computationally attractive.
+The parallel family at the next prime is Sym⁵(Σ_g). The ground-truth case
+Sym⁵(S²) = CP⁵ and the positive-genus case Sym⁵(T²) both compute rank-one
+P¹: H² → H¹⁰. Compact unordered labels make the 1,797,894-cell torus model
+practical, but the predicted 414,092,094 cells at genus two establish a clear
+boundary for this presentation. See [the prime-five report](prime-five.md)
+for timings and the next search strategy.

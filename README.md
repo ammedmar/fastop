@@ -92,11 +92,26 @@ assert sum(genus_two.f_vector()) == 41_478
 assert genus_two.cohomology(p=3).operation_rank(2, 1) == 1
 ```
 
+At the prime 5, the same construction reaches the fifth symmetric power.
+The sphere is the projective-space ground truth, while the torus provides a
+1.8-million-cell positive-genus computation:
+
+```python
+CP5 = spaces.symmetric_product_of_surface(genus=0, power=5)
+assert CP5.cohomology(p=5).operation_rank(2, 1) == 1
+
+torus_fifth = spaces.symmetric_product_of_surface(genus=1, power=5)
+assert sum(torus_fifth.f_vector()) == 1_797_894
+assert torus_fifth.cohomology(p=5).operation_rank(2, 1) == 1
+```
+
 Run `python benchmarks/showcase.py` for reproducible construction,
 cohomology, and operation timings on all showcase models. A reference run and
 the role of each example are recorded in [docs/showcase.md](docs/showcase.md).
 The genus expansion and its extended benchmark are described in
-[docs/symmetric-surfaces.md](docs/symmetric-surfaces.md).
+[docs/symmetric-surfaces.md](docs/symmetric-surfaces.md). Prime-five results
+and their performance envelope are recorded in
+[docs/prime-five.md](docs/prime-five.md).
 
 ## Development
 

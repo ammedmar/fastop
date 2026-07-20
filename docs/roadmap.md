@@ -62,14 +62,27 @@ finite simplicial sets, including compact quotients and symmetric products.
   rank-one P¹: H² → H⁶. Full middle-degree cohomology is deliberately left
   out of the default regression suite because it is much more expensive.
 
-## Next prime: p = 5
+## 6. Prime-five baseline — complete
 
-The next search will keep the surface family and increase the symmetric
-power. Sym⁵(S²) = CP⁵ provides ground truth for
-P¹: H² → H¹⁰, where the unstable identity gives P¹(x) = x⁵. Higher-genus
-Sym⁵(Σ_g) will then be the search family. Before constructing those models,
-the direct unordered algorithm will need a multiplicity-based enumerator so
-it does not iterate over every five-element tuple.
+- Sym⁵(S²) = CP⁵ has 22,010 cells, the expected even-degree mod-5
+  cohomology, and rank-one P¹: H² → H¹⁰.
+- Sym⁵(T²) has 1,797,894 cells. The focused computation measures
+  `b₂ = 2`, `b₁₀ = 1`, and rank-one P¹: H² → H¹⁰.
+- L¹¹(5) gives an independent face-map validation with 354,312 cells. It
+  detects both rank-one βP⁰: H¹ → H² and rank-one P¹: H² → H¹⁰.
+- Symmetric powers now store compact unordered labels and compute faces on
+  demand. Cohomology boundary data is also built only in requested degrees.
+- A public `symmetric_power_f_vector(power)` preflight predicts model size
+  without constructing the model.
 
-Generalized Bott threefolds remain a possible later family, but are postponed
-until the symmetric-product program at primes 3 and 5 has been explored.
+## Next prime-five search
+
+Sym⁵(Σ₂) would contain 414,092,094 cells in the present model, so increasing
+surface genus is no longer the efficient next move. The next search should
+screen compact ten-dimensional face-map models from other geometric or
+combinatorial families, using cohomology rings or cell counts before any
+cochain operation is attempted.
+
+Generalized Bott manifolds remain a possible later family, but are postponed
+while the prime-five search focuses on examples less directly predicted by a
+projective-space-type degree-two generator.
