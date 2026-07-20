@@ -64,6 +64,16 @@ circle = DeltaComplex([
 assert circle.cohomology(p=3).betti_numbers() == {0: 1, 1: 1}
 ```
 
+Strict cell actions can be quotiented without subdivision.  For example, the
+catalog lens space is the diagonal cyclic quotient of a join of circles:
+
+```python
+L = spaces.lens_space(7, 3)
+H = L.cohomology(p=3)
+assert H.operation_rank(1, 0, bockstein=True) == 1
+assert H.operation_rank(2, 1) == 1
+```
+
 ## Development
 
 ```bash

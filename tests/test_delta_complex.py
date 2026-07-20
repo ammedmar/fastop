@@ -101,3 +101,48 @@ def test_face_map_input_rejects_vertex_only_evaluators():
 
     with pytest.raises(ValueError, match="abstract simplicial complex"):
         cohomology.operation_rank(2, 1, algorithm="prime-three")
+
+
+def test_strict_cyclic_quotient_of_a_circle():
+    circle = DeltaComplex([
+        [(), (), ()],
+        [(1, 0), (2, 1), (0, 2)],
+    ])
+    rotation = (
+        (1, 2, 0),
+        (1, 2, 0),
+    )
+
+    quotient = circle.quotient([rotation], require_free=True)
+
+    assert quotient.face_maps == (((),), ((0, 0),))
+    assert quotient.cohomology(p=3).betti_numbers() == {0: 1, 1: 1}
+
+
+def test_quotient_validates_actions_and_optional_freeness():
+    interval = DeltaComplex([
+        [(), ()],
+        [(1, 0)],
+    ])
+
+    with pytest.raises(ValueError, match="permutation"):
+        interval.quotient([((0, 0), (0,))])
+    with pytest.raises(ValueError, match="commute"):
+        interval.quotient([((1, 0), (0,))])
+
+    fixed_vertex = DeltaComplex([
+        [()],
+        [(0, 0), (0, 0)],
+    ])
+    with pytest.raises(ValueError, match="not free"):
+        fixed_vertex.quotient([((0,), (1, 0))], require_free=True)
+
+
+def test_compact_lens_space_detects_ground_truth_mod_three_operations():
+    lens = spaces.lens_space(7, 3)
+    cohomology = lens.cohomology(p=3)
+
+    assert lens.f_vector() == (4, 22, 72, 153, 216, 198, 108, 27)
+    assert cohomology.betti_numbers() == {degree: 1 for degree in range(8)}
+    assert cohomology.operation_rank(1, 0, bockstein=True) == 1
+    assert cohomology.operation_rank(2, 1) == 1

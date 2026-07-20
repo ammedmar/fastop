@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from itertools import combinations
+from itertools import combinations, product
 
+from fastop.delta_complex import DeltaComplex
 from fastop.simplicial import SimplicialComplex
 
 
@@ -83,6 +84,73 @@ def matching_complex(order: int) -> SimplicialComplex:
     )
 
 
+def lens_space(dimension: int, order: int = 3) -> DeltaComplex:
+    """Return a compact Delta-complex model of a standard lens space.
+
+    The model realizes
+    :math:`L^{2m-1}(q)=(S^1)^{*m}/C_q`.  Each circle is a cyclic ``q``-gon,
+    and the cyclic group rotates every factor diagonally.
+    """
+    if not isinstance(dimension, int) or isinstance(dimension, bool):
+        raise TypeError("dimension must be an integer")
+    if dimension < 1 or dimension % 2 == 0:
+        raise ValueError("lens-space dimension must be a positive odd integer")
+    if not isinstance(order, int) or isinstance(order, bool):
+        raise TypeError("order must be an integer")
+    if order < 2:
+        raise ValueError("order must be at least two")
+
+    factor_count = (dimension + 1) // 2
+    choices = (
+        (None,)
+        + tuple(("v", index) for index in range(order))
+        + tuple(("e", index) for index in range(order))
+    )
+    labels_by_degree: list[list[tuple]] = [
+        [] for _ in range(dimension + 1)
+    ]
+    for label in product(choices, repeat=factor_count):
+        weight = sum(
+            0 if choice is None else 1 if choice[0] == "v" else 2
+            for choice in label
+        )
+        if weight:
+            labels_by_degree[weight - 1].append(label)
+    indices = [
+        {label: index for index, label in enumerate(labels)}
+        for labels in labels_by_degree
+    ]
+
+    face_maps = [tuple(() for _ in labels_by_degree[0])]
+    for degree in range(1, dimension + 1):
+        face_maps.append(tuple(
+            tuple(
+                indices[degree - 1][
+                    _lens_join_face(label, local_index, order)
+                ]
+                for local_index in range(degree + 1)
+            )
+            for label in labels_by_degree[degree]
+        ))
+    cover = DeltaComplex(face_maps)
+
+    generator = tuple(
+        tuple(
+            indices[degree][
+                tuple(
+                    None
+                    if choice is None
+                    else (choice[0], (choice[1] + 1) % order)
+                    for choice in label
+                )
+            ]
+            for label in labels
+        )
+        for degree, labels in enumerate(labels_by_degree)
+    )
+    return cover.quotient([generator], require_free=True)
+
+
 def moore_space(order: int = 3) -> SimplicialComplex:
     """Return a catalog triangulation of the mod-``order`` Moore space."""
     if not isinstance(order, int) or isinstance(order, bool):
@@ -109,6 +177,26 @@ def _perfect_matchings(vertices: tuple[int, ...]):
         remaining = vertices[1:index] + vertices[index + 1 :]
         for matching in _perfect_matchings(remaining):
             yield ((first, second),) + matching
+
+
+def _lens_join_face(label: tuple, local_index: int, order: int) -> tuple:
+    offset = 0
+    for factor, choice in enumerate(label):
+        width = 0 if choice is None else 1 if choice[0] == "v" else 2
+        if local_index >= offset + width:
+            offset += width
+            continue
+
+        answer = list(label)
+        if choice[0] == "v":
+            answer[factor] = None
+        else:
+            edge = choice[1]
+            edge_position = local_index - offset
+            vertex = (edge + 1) % order if edge_position == 0 else edge
+            answer[factor] = ("v", vertex)
+        return tuple(answer)
+    raise IndexError("local face index is outside the join cell")
 
 
 _REAL_PROJECTIVE_PLANE_FACETS = (

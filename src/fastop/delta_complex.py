@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 Face = tuple[int, ...]
 FaceTable = tuple[tuple[Face, ...], ...]
+CellAction = tuple[tuple[int, ...], ...]
 
 
 @dataclass(frozen=True)
@@ -146,6 +147,130 @@ class DeltaComplex:
     ) -> PrimeFieldCohomology:
         """Return mod-``p`` cohomology with a chosen basis."""
         return PrimeFieldCohomology(self, p=p, reduced=reduced, convention=convention)
+
+    def quotient(
+        self,
+        generators: Iterable[Iterable[Iterable[int]]],
+        *,
+        require_free: bool = False,
+    ) -> "DeltaComplex":
+        """Return the quotient by strict semi-simplicial automorphisms.
+
+        Each generator is a permutation of the cells in every degree.  It
+        must commute with every face map.  When ``require_free`` is true, the
+        generated finite group is enumerated and every nonidentity element is
+        checked for fixed cells.
+        """
+        actions = tuple(
+            tuple(tuple(permutation) for permutation in generator)
+            for generator in generators
+        )
+        if not actions:
+            return self
+        for action in actions:
+            self._validate_action(action)
+
+        if require_free:
+            for action in self._generated_actions(actions):
+                if self._is_identity_action(action):
+                    continue
+                if any(
+                    image == cell
+                    for permutation in action
+                    for cell, image in enumerate(permutation)
+                ):
+                    raise ValueError("the generated action is not free on cells")
+
+        orbit_indices = []
+        orbit_representatives = []
+        for degree, degree_faces in enumerate(self.face_maps):
+            parent = list(range(len(degree_faces)))
+
+            def find(cell: int) -> int:
+                while parent[cell] != cell:
+                    parent[cell] = parent[parent[cell]]
+                    cell = parent[cell]
+                return cell
+
+            def union(left: int, right: int) -> None:
+                left_root = find(left)
+                right_root = find(right)
+                if left_root == right_root:
+                    return
+                if left_root < right_root:
+                    parent[right_root] = left_root
+                else:
+                    parent[left_root] = right_root
+
+            for action in actions:
+                for cell, image in enumerate(action[degree]):
+                    union(cell, image)
+
+            roots = tuple(find(cell) for cell in range(len(degree_faces)))
+            representatives = tuple(sorted(set(roots)))
+            root_to_orbit = {
+                root: orbit for orbit, root in enumerate(representatives)
+            }
+            orbit_indices.append(tuple(root_to_orbit[root] for root in roots))
+            orbit_representatives.append(representatives)
+
+        quotient_faces = [
+            tuple(() for _ in orbit_representatives[0])
+        ]
+        for degree in range(1, self.dimension + 1):
+            quotient_faces.append(tuple(
+                tuple(
+                    orbit_indices[degree - 1][self.face(degree, representative, i)]
+                    for i in range(degree + 1)
+                )
+                for representative in orbit_representatives[degree]
+            ))
+        return DeltaComplex(quotient_faces)
+
+    def _validate_action(self, action: CellAction) -> None:
+        if len(action) != self.dimension + 1:
+            raise ValueError("a cell action needs one permutation per dimension")
+        for degree, permutation in enumerate(action):
+            cell_count = len(self.face_maps[degree])
+            if len(permutation) != cell_count or set(permutation) != set(range(cell_count)):
+                raise ValueError("each cell action must be a permutation")
+            if degree == 0:
+                continue
+            for cell in range(cell_count):
+                for i in range(degree + 1):
+                    acted_face = action[degree - 1][self.face(degree, cell, i)]
+                    face_of_acted = self.face(degree, permutation[cell], i)
+                    if acted_face != face_of_acted:
+                        raise ValueError("cell action does not commute with face maps")
+
+    def _generated_actions(self, generators: tuple[CellAction, ...]) -> set[CellAction]:
+        identity = tuple(
+            tuple(range(len(degree_faces)))
+            for degree_faces in self.face_maps
+        )
+        actions = {identity}
+        pending = [identity]
+        while pending:
+            current = pending.pop()
+            for generator in generators:
+                composite = tuple(
+                    tuple(
+                        generator[degree][current[degree][cell]]
+                        for cell in range(len(current[degree]))
+                    )
+                    for degree in range(self.dimension + 1)
+                )
+                if composite not in actions:
+                    actions.add(composite)
+                    pending.append(composite)
+        return actions
+
+    @staticmethod
+    def _is_identity_action(action: CellAction) -> bool:
+        return all(
+            all(cell == image for cell, image in enumerate(permutation))
+            for permutation in action
+        )
 
     @staticmethod
     def _validate_shape(face_maps: FaceTable) -> None:
