@@ -82,6 +82,7 @@ def test_cohomology_caches_universal_operations(monkeypatch):
         bockstein=True,
         target_degree=2,
         missing_vertices_per_factor=1,
+        formula_source="auto",
     )
     second = cohomology._universal_operation(
         operation_degree=0,
@@ -89,6 +90,7 @@ def test_cohomology_caches_universal_operations(monkeypatch):
         bockstein=True,
         target_degree=2,
         missing_vertices_per_factor=1,
+        formula_source="auto",
     )
 
     assert first is second
@@ -157,6 +159,7 @@ def test_reference_bridge_uses_universal_data_and_native_evaluator(monkeypatch):
         **_bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True),
         target_face_to_index=target_face_to_index,
         algorithm="source_focused",
+        formula_source="computed",
     )
 
     assert vector == {target_face_to_index[target]: 2}
@@ -229,12 +232,43 @@ def test_reference_bridge_builds_universal_operation(monkeypatch):
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
     universal = universal_operation(
-        **_bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True)
+        **_bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True),
+        formula_source="computed",
     )
 
     assert calls == [(3, 0, -1, True)]
     assert universal.target_degree == 2
     assert universal.terms == {((0, 1), (1, 2), (0, 2)): 1}
+
+
+def test_universal_operation_uses_low_dimensional_catalog_by_default(monkeypatch):
+    class BrokenSteenrod:
+        @staticmethod
+        def chain_operations(p, s, q, *, bockstein):
+            raise AssertionError("catalog lookup should not call oddp")
+
+    fake_oddp = types.ModuleType("oddp")
+    fake_oddp.Steenrod = BrokenSteenrod
+    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
+
+    universal = universal_operation(
+        **_bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True)
+    )
+
+    assert universal.terms == {((0, 2), (0, 1), (1, 2)): 2}
+
+
+def test_universal_operation_can_require_or_skip_catalog():
+    operation = _bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True)
+
+    assert universal_operation(**operation, formula_source="catalog").terms == {
+        ((0, 2), (0, 1), (1, 2)): 2
+    }
+    with pytest.raises(NotImplementedError, match="catalog"):
+        universal_operation(
+            **_bridge_kwargs(p=3, r=1, source_degree=5),
+            formula_source="catalog",
+        )
 
 
 def test_native_universal_operation_builds_top_reduced_power_family():

@@ -40,6 +40,7 @@ def cochain_operation_vector(
     oddp_q: int,
     target_face_to_index: dict["Simplex", int],
     algorithm: str,
+    formula_source: str = "auto",
 ) -> Vector:
     """Build universal data and evaluate it on a cochain."""
     return cochain_operation_vector_from_universal(
@@ -54,6 +55,7 @@ def cochain_operation_vector(
             missing_vertices_per_factor=missing_vertices_per_factor,
             oddp_s=oddp_s,
             oddp_q=oddp_q,
+            formula_source=formula_source,
         ),
         target_face_to_index,
         algorithm=algorithm,

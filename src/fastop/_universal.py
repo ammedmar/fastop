@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from fastop._precomputed_universal import precomputed_terms
+
 TensorTerm = tuple[tuple[int, ...], ...]
 OmissionPattern = tuple[tuple[int, ...], ...]
 
@@ -141,8 +143,31 @@ def universal_operation(
     missing_vertices_per_factor: int,
     oddp_s: int | None = None,
     oddp_q: int | None = None,
+    formula_source: str = "auto",
 ) -> UniversalOperation:
     """Build universal tensor data, falling back to oddp when needed."""
+    if formula_source not in {"auto", "catalog", "computed"}:
+        raise ValueError("formula_source must be 'auto', 'catalog', or 'computed'")
+    if formula_source in {"auto", "catalog"}:
+        terms = precomputed_terms(
+            p=p,
+            r=r,
+            source_degree=source_degree,
+            bockstein=bockstein,
+        )
+        if terms is not None:
+            return UniversalOperation.from_terms(
+                p=p,
+                r=r,
+                source_degree=source_degree,
+                bockstein=bockstein,
+                target_degree=target_degree,
+                missing_vertices_per_factor=missing_vertices_per_factor,
+                terms=terms,
+            )
+        if formula_source == "catalog":
+            raise NotImplementedError("this universal operation is not in the catalog")
+
     native = native_universal_operation(
         p=p,
         r=r,

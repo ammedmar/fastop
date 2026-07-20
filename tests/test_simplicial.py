@@ -118,7 +118,12 @@ def test_odd_primary_operation_uses_universal_data_and_projects(monkeypatch):
     fake_oddp.Steenrod = FakeSteenrod
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
-    assert x.operation(0, bockstein=True, algorithm="direct") == cohomology.basis(2)[0]
+    assert x.operation(
+        0,
+        bockstein=True,
+        algorithm="direct",
+        formula_source="computed",
+    ) == cohomology.basis(2)[0]
     assert calls[0] == (3, 0, -1, True)
     assert cohomology.operation_rank(1, 0, bockstein=True, algorithm="direct") == 1
 
@@ -154,7 +159,12 @@ def test_odd_primary_operation_uses_oddp_universal_conventions(monkeypatch):
     fake_oddp.Steenrod = FakeSteenrod
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
-    assert x.operation(0, bockstein=True, algorithm="source_focused").is_zero()
+    assert x.operation(
+        0,
+        bockstein=True,
+        algorithm="source_focused",
+        formula_source="computed",
+    ).is_zero()
     assert calls == [(3, 0, -1, True)]
 
 

@@ -192,6 +192,7 @@ class PrimeFieldCohomology:
         *,
         bockstein: bool = False,
         algorithm: str = "auto",
+        formula_source: str = "auto",
     ) -> "PrimeFieldCohomologyElement":
         """Apply the Steenrod operation selected by the coefficient prime."""
         self._validate_operation_index(r)
@@ -210,6 +211,7 @@ class PrimeFieldCohomology:
                 r,
                 bockstein=bockstein,
                 algorithm=algorithm,
+                formula_source=formula_source,
             )
         return answer
 
@@ -220,6 +222,7 @@ class PrimeFieldCohomology:
         *,
         bockstein: bool = False,
         algorithm: str = "auto",
+        formula_source: str = "auto",
     ) -> list[Vector]:
         """Return columns of the selected Steenrod operation from ``H^degree``."""
         self._validate_operation_index(r)
@@ -231,6 +234,7 @@ class PrimeFieldCohomology:
                 r,
                 bockstein=bockstein,
                 algorithm=algorithm,
+                formula_source=formula_source,
             )._coordinates.get(target_degree, {})
             for basis_element in self.basis(degree)
         ]
@@ -242,6 +246,7 @@ class PrimeFieldCohomology:
         *,
         bockstein: bool = False,
         algorithm: str = "auto",
+        formula_source: str = "auto",
     ) -> int:
         """Return the rank of the selected Steenrod operation from ``H^degree``."""
         self._validate_operation_index(r)
@@ -265,6 +270,7 @@ class PrimeFieldCohomology:
                 r,
                 bockstein=bockstein,
                 algorithm=algorithm,
+                formula_source=formula_source,
             )._coordinates.get(target_degree, {})
             if add_to_basis(image_basis, image, self.p) and len(image_basis) == target_rank:
                 return target_rank
@@ -340,6 +346,7 @@ class PrimeFieldCohomology:
         bockstein: bool,
         target_degree: int,
         missing_vertices_per_factor: int,
+        formula_source: str,
     ):
         key = (
             operation_degree,
@@ -347,6 +354,7 @@ class PrimeFieldCohomology:
             bockstein,
             target_degree,
             missing_vertices_per_factor,
+            formula_source,
         )
         cached = self._universal_operations.get(key)
         if cached is None:
@@ -359,6 +367,7 @@ class PrimeFieldCohomology:
                 missing_vertices_per_factor=missing_vertices_per_factor,
                 oddp_s=self._oddp_operation_index(operation_degree),
                 oddp_q=self._oddp_source_degree(source_degree),
+                formula_source=formula_source,
             )
             self._universal_operations[key] = cached
         return cached
@@ -371,6 +380,7 @@ class PrimeFieldCohomology:
         *,
         bockstein: bool,
         algorithm: str,
+        formula_source: str,
     ) -> "PrimeFieldCohomologyElement":
         operation_degree = self.convention * r
         if operation_degree < 0:
@@ -395,6 +405,7 @@ class PrimeFieldCohomology:
             bockstein=bockstein,
             target_degree=target_degree,
             missing_vertices_per_factor=missing_vertices_per_factor,
+            formula_source=formula_source,
         )
         target_vector = cochain_operation_vector_from_universal(
             self.complex,
@@ -502,6 +513,7 @@ class PrimeFieldCohomologyElement:
         *,
         bockstein: bool = False,
         algorithm: str = "auto",
+        formula_source: str = "auto",
     ) -> "PrimeFieldCohomologyElement":
         """Return the Steenrod operation selected by the coefficient prime."""
         return self.parent.operation(
@@ -509,6 +521,7 @@ class PrimeFieldCohomologyElement:
             r,
             bockstein=bockstein,
             algorithm=algorithm,
+            formula_source=formula_source,
         )
 
     def cocycle(self, degree: int | None = None):
