@@ -442,6 +442,8 @@ class PrimeFieldCohomology:
                     if not sign:
                         continue
                     face = self.complex.face(degree, simplex, index)
+                    if face is None:
+                        continue
                     face_index = lower_index[face]
                     coefficient = (column.get(face_index, 0) + sign) % self.p
                     if coefficient:

@@ -9,6 +9,7 @@ from fastop.cohomology import (
 from fastop.delta_complex import DeltaComplex
 from fastop import spaces
 from fastop.simplicial import SimplicialComplex
+from fastop.simplicial_set import SimplexReference, SimplicialSet
 
 __version__ = "0.1.0.dev0"
 
@@ -19,6 +20,8 @@ __all__ = [
     "PrimeFieldCohomologyElement",
     "DeltaComplex",
     "SimplicialComplex",
+    "SimplexReference",
+    "SimplicialSet",
     "spaces",
     "__version__",
 ]

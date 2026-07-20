@@ -6,6 +6,7 @@ from itertools import combinations, product
 
 from fastop.delta_complex import DeltaComplex
 from fastop.simplicial import SimplicialComplex
+from fastop.simplicial_set import SimplicialSet
 
 
 def simplex(dimension: int) -> SimplicialComplex:
@@ -149,6 +150,25 @@ def lens_space(dimension: int, order: int = 3) -> DeltaComplex:
         for degree, labels in enumerate(labels_by_degree)
     )
     return cover.quotient([generator], require_free=True)
+
+
+def minimal_simplicial_sphere(dimension: int) -> SimplicialSet:
+    """Return the one-vertex simplicial-set model of a positive sphere."""
+    return SimplicialSet.minimal_sphere(dimension)
+
+
+def minimal_simplicial_torus() -> SimplicialSet:
+    """Return a one-vertex, six-cell simplicial-set model of the torus."""
+    return SimplicialSet.from_delta_complex(DeltaComplex([
+        [()],
+        [(0, 0), (0, 0), (0, 0)],
+        [(2, 1, 0), (0, 1, 2)],
+    ]))
+
+
+def symmetric_product_of_torus(power: int) -> SimplicialSet:
+    """Return the ``power``-fold symmetric product of the two-torus."""
+    return minimal_simplicial_torus().symmetric_power(power)
 
 
 def moore_space(order: int = 3) -> SimplicialComplex:
