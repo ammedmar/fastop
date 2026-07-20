@@ -97,6 +97,17 @@ def test_cohomology_caches_universal_operations(monkeypatch):
     assert len(calls) == 1
 
 
+def test_cohomology_builds_boundary_data_only_for_requested_degree():
+    cohomology = spaces.complex_projective_space(3).cohomology(p=5)
+
+    assert cohomology._boundary_columns == {}
+    assert cohomology._coboundary_columns == {}
+
+    assert cohomology.betti_number(2) == 1
+    assert set(cohomology._boundary_columns) == {2, 3}
+    assert set(cohomology._coboundary_columns) == {1, 2}
+
+
 def test_reference_oddp_cochain_bridge_returns_fastop_sparse_vector(monkeypatch):
     complex_ = spaces.complex_projective_plane()
     target_faces = sorted(complex_.faces(4))

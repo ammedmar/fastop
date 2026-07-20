@@ -74,16 +74,24 @@ class PrimeFieldCohomology:
         self.p = p
         self.reduced = reduced
         self.convention = convention
-        self._faces = {
-            degree: tuple(sorted(complex_.cells(degree)))
-            for degree in range(complex_.dimension + 1)
-        }
+        self._faces = {}
+        for degree in range(complex_.dimension + 1):
+            cells = complex_.cells(degree)
+            self._faces[degree] = (
+                cells
+                if isinstance(cells, range) and cells == range(len(cells))
+                else tuple(sorted(cells))
+            )
         self._face_to_index = {
-            degree: {face: index for index, face in enumerate(faces)}
+            degree: (
+                faces
+                if isinstance(faces, range)
+                else {face: index for index, face in enumerate(faces)}
+            )
             for degree, faces in self._faces.items()
         }
-        self._boundary_columns = self._build_boundary_columns()
-        self._coboundary_columns = self._build_coboundary_columns()
+        self._boundary_columns: dict[int, list[Vector]] = {}
+        self._coboundary_columns: dict[int, list[Vector]] = {}
         self._image_basis_by_degree: dict[int, list[Vector]] = {}
         self._cycles_by_degree: dict[int, list[Vector]] = {}
         self._degree_data = _DegreeDataCache(self)
@@ -430,17 +438,21 @@ class PrimeFieldCohomology:
         )
         return self.project_cocycle(target_degree, target_vector)
 
-    def _build_boundary_columns(self) -> dict[int, list[Vector]]:
-        columns: dict[int, list[Vector]] = {0: [{} for _ in self._faces.get(0, ())]}
-        for degree in range(1, self.dimension + 1):
+    def _boundary_columns_for_degree(self, degree: int) -> list[Vector]:
+        cached = self._boundary_columns.get(degree)
+        if cached is not None:
+            return cached
+        if degree < 0 or degree > self.dimension:
+            return []
+        if degree == 0:
+            columns = [{} for _ in self._faces.get(0, ())]
+        else:
             lower_index = self._face_to_index[degree - 1]
             signs = tuple(((-1) ** index) % self.p for index in range(degree + 1))
-            degree_columns = []
+            columns = []
             for simplex in self._faces[degree]:
                 column = {}
                 for index, sign in enumerate(signs):
-                    if not sign:
-                        continue
                     face = self.complex.face(degree, simplex, index)
                     if face is None:
                         continue
@@ -450,21 +462,23 @@ class PrimeFieldCohomology:
                         column[face_index] = coefficient
                     elif face_index in column:
                         del column[face_index]
-                degree_columns.append(column)
-            columns[degree] = degree_columns
+                columns.append(column)
+        self._boundary_columns[degree] = columns
         return columns
 
-    def _build_coboundary_columns(self) -> dict[int, list[Vector]]:
-        columns = {}
-        for degree in range(self.dimension + 1):
-            domain_faces = self._faces.get(degree, ())
-            degree_columns = [{} for _ in domain_faces]
-            for target_index, boundary in enumerate(
-                self._boundary_columns.get(degree + 1, ())
-            ):
-                for domain_index, coefficient in boundary.items():
-                    degree_columns[domain_index][target_index] = coefficient % self.p
-            columns[degree] = degree_columns
+    def _coboundary_columns_for_degree(self, degree: int) -> list[Vector]:
+        cached = self._coboundary_columns.get(degree)
+        if cached is not None:
+            return cached
+        if degree < 0 or degree > self.dimension:
+            return []
+        columns = [{} for _ in self._faces.get(degree, ())]
+        for target_index, boundary in enumerate(
+            self._boundary_columns_for_degree(degree + 1)
+        ):
+            for domain_index, coefficient in boundary.items():
+                columns[domain_index][target_index] = coefficient % self.p
+        self._coboundary_columns[degree] = columns
         return columns
 
     def _build_degree_data(self) -> dict[int, _DegreeData]:
@@ -479,7 +493,7 @@ class PrimeFieldCohomology:
         if cached_image is not None and cached_cycles is not None:
             return cached_image, cached_cycles
         image_basis, cycles = column_image_and_kernel_basis(
-            self._coboundary_columns[degree],
+            self._coboundary_columns_for_degree(degree),
             self.p,
         )
         self._image_basis_by_degree[degree] = image_basis

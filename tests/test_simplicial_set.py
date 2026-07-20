@@ -111,6 +111,29 @@ def test_symmetric_power_validates_power():
         circle.symmetric_power(0)
 
 
+def test_symmetric_power_cell_counts_do_not_require_model_construction():
+    sphere = spaces.minimal_simplicial_surface(0)
+    torus = spaces.minimal_simplicial_surface(1)
+
+    assert sphere.symmetric_power_f_vector(5) == (
+        1,
+        0,
+        5,
+        40,
+        271,
+        1197,
+        3381,
+        5985,
+        6405,
+        3780,
+        945,
+    )
+    assert sum(torus.symmetric_power_f_vector(5)) == 1_797_894
+    assert sum(
+        spaces.minimal_simplicial_surface(2).symmetric_power_f_vector(5)
+    ) == 414_092_094
+
+
 @pytest.mark.parametrize(
     ("genus", "f_vector", "betti"),
     [

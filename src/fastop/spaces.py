@@ -6,7 +6,7 @@ from itertools import combinations, product
 
 from fastop.delta_complex import DeltaComplex
 from fastop.simplicial import SimplicialComplex
-from fastop.simplicial_set import SimplicialSet
+from fastop.simplicial_set import SimplicialSet, SymmetricPowerSimplicialSet
 
 
 def simplex(dimension: int) -> SimplicialComplex:
@@ -210,12 +210,17 @@ def minimal_simplicial_surface(genus: int) -> SimplicialSet:
     ]))
 
 
-def symmetric_product_of_torus(power: int) -> SimplicialSet:
+def symmetric_product_of_torus(
+    power: int,
+) -> SimplicialSet | SymmetricPowerSimplicialSet:
     """Return the ``power``-fold symmetric product of the two-torus."""
     return symmetric_product_of_surface(1, power)
 
 
-def symmetric_product_of_surface(genus: int, power: int = 3) -> SimplicialSet:
+def symmetric_product_of_surface(
+    genus: int,
+    power: int = 3,
+) -> SimplicialSet | SymmetricPowerSimplicialSet:
     """Return a symmetric power of the closed orientable genus-``genus`` surface."""
     return minimal_simplicial_surface(genus).symmetric_power(power)
 

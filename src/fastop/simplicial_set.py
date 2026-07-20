@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from functools import lru_cache
 from itertools import combinations, combinations_with_replacement, product
+from math import comb
 from typing import Iterable, TYPE_CHECKING
 
 from fastop._group_action import (
@@ -196,12 +197,12 @@ class SimplicialSet:
         """Return nondegenerate cell indices in one or every dimension."""
         if dimension is None:
             return {
-                degree: tuple(range(len(degree_faces)))
+                degree: range(len(degree_faces))
                 for degree, degree_faces in enumerate(self.face_maps)
             }
         if dimension < 0 or dimension > self.dimension:
             return ()
-        return tuple(range(len(self.face_maps[dimension])))
+        return range(len(self.face_maps[dimension]))
 
     def f_vector(self) -> tuple[int, ...]:
         """Return the number of nondegenerate cells in every dimension."""
@@ -351,7 +352,10 @@ class SimplicialSet:
             for degree, labels in enumerate(self._product_labels)
         )
 
-    def symmetric_power(self, power: int) -> "SimplicialSet":
+    def symmetric_power(
+        self,
+        power: int,
+    ) -> "SimplicialSet | SymmetricPowerSimplicialSet":
         """Return the quotient of a cartesian power by factor permutations.
 
         Orbit representatives are built directly as unordered tuples.  This
@@ -363,50 +367,12 @@ class SimplicialSet:
             raise ValueError("power must be positive")
         if power == 1:
             return self
+        return SymmetricPowerSimplicialSet(self, power)
 
-        labels_by_degree = []
-        for total_degree in range(power * self.dimension + 1):
-            references = tuple(sorted(
-                (
-                    SimplexReference(degree, cell, operator)
-                    for degree, degree_faces in enumerate(self.face_maps)
-                    if degree <= total_degree
-                    for cell in range(len(degree_faces))
-                    for operator in _surjections(total_degree, degree)
-                ),
-                key=lambda reference: (
-                    reference.degree,
-                    reference.cell,
-                    reference.operator,
-                ),
-            ))
-            labels_by_degree.append(tuple(_symmetric_labels(
-                references,
-                power,
-                total_degree=total_degree,
-                max_base_degree=self.dimension,
-            )))
-
-        label_indices = tuple(
-            {label: index for index, label in enumerate(labels)}
-            for labels in labels_by_degree
-        )
-        symmetric_faces = [tuple(() for _ in labels_by_degree[0])]
-        for degree in range(1, len(labels_by_degree)):
-            symmetric_faces.append(tuple(
-                tuple(
-                    _normalize_symmetric_reference(
-                        tuple(
-                            self.face_reference(component, index)
-                            for component in label
-                        ),
-                        label_indices,
-                    )
-                    for index in range(degree + 1)
-                )
-                for label in labels_by_degree[degree]
-            ))
-        return SimplicialSet(symmetric_faces)
+    def symmetric_power_f_vector(self, power: int) -> tuple[int, ...]:
+        """Count a symmetric power without constructing its face model."""
+        _validate_symmetric_power(power)
+        return _symmetric_power_f_vector(self.f_vector(), power)
 
     def quotient(
         self,
@@ -589,49 +555,7 @@ def _normalize_product_reference(
     )
 
 
-def _normalize_symmetric_reference(
-    components: tuple[SimplexReference, ...],
-    label_indices: tuple[dict[tuple[SimplexReference, ...], int], ...],
-) -> SimplexReference:
-    total_degree = components[0].dimension
-    common = _common_degeneracies(tuple(
-        component.operator for component in components
-    ))
-    quotient_operator = _operator_from_degeneracies(total_degree, common)
-    base_degree = total_degree - len(common)
-
-    representatives = []
-    previous = None
-    for position, value in enumerate(quotient_operator):
-        if value != previous:
-            representatives.append(position)
-            previous = value
-    base_label = tuple(sorted(
-        (
-            SimplexReference(
-                component.degree,
-                component.cell,
-                tuple(
-                    component.operator[position]
-                    for position in representatives
-                ),
-            )
-            for component in components
-        ),
-        key=lambda reference: (
-            reference.degree,
-            reference.cell,
-            reference.operator,
-        ),
-    ))
-    return SimplexReference(
-        base_degree,
-        label_indices[base_degree][base_label],
-        quotient_operator,
-    )
-
-
-def _symmetric_labels(
+def _symmetric_index_labels(
     references: tuple[SimplexReference, ...],
     power: int,
     *,
@@ -652,7 +576,7 @@ def _symmetric_labels(
         )
         for reference in references
     )
-    prefix: list[SimplexReference] = []
+    prefix: list[int] = []
 
     def generate(start: int, remaining: int, common_mask: int):
         if remaining == 0:
@@ -663,7 +587,7 @@ def _symmetric_labels(
             return
         if common_mask == 0:
             for suffix in combinations_with_replacement(
-                references[start:],
+                range(start, len(references)),
                 remaining,
             ):
                 yield tuple(prefix) + suffix
@@ -673,8 +597,251 @@ def _symmetric_labels(
             next_mask = common_mask & masks[index]
             if next_mask.bit_count() > (remaining - 1) * max_base_degree:
                 continue
-            prefix.append(references[index])
+            prefix.append(index)
             yield from generate(index, remaining - 1, next_mask)
             prefix.pop()
 
     yield from generate(0, power, (1 << total_degree) - 1)
+
+
+class SymmetricPowerSimplicialSet:
+    """A finite symmetric power with faces computed from compact cell labels."""
+
+    def __init__(self, base, power: int):
+        _validate_symmetric_power(power)
+        self.base = base
+        self.power = power
+        references_by_degree = []
+        labels_by_degree = []
+        for total_degree in range(power * base.dimension + 1):
+            references = tuple(sorted(
+                (
+                    SimplexReference(degree, cell, operator)
+                    for degree in range(min(base.dimension, total_degree) + 1)
+                    for cell in base.cells(degree)
+                    for operator in _surjections(total_degree, degree)
+                ),
+                key=_reference_key,
+            ))
+            references_by_degree.append(references)
+            labels_by_degree.append(tuple(_symmetric_index_labels(
+                references,
+                power,
+                total_degree=total_degree,
+                max_base_degree=base.dimension,
+            )))
+
+        self._references = tuple(references_by_degree)
+        self._reference_indices = tuple(
+            {reference: index for index, reference in enumerate(references)}
+            for references in self._references
+        )
+        self._labels = tuple(labels_by_degree)
+        self._label_indices = tuple(
+            {label: index for index, label in enumerate(labels)}
+            for labels in self._labels
+        )
+
+    @staticmethod
+    def nondegenerate(degree: int, cell: int) -> SimplexReference:
+        """Return the identity reference to one nondegenerate cell."""
+        return SimplexReference(degree, cell, tuple(range(degree + 1)))
+
+    @property
+    def dimension(self) -> int:
+        """Return the dimension of the symmetric power."""
+        return len(self._labels) - 1
+
+    @property
+    def supports_vertex_algorithms(self) -> bool:
+        """Return whether cells carry globally comparable vertex sets."""
+        return False
+
+    def cells(self, dimension: int | None = None):
+        """Return nondegenerate cell indices in one or every dimension."""
+        if dimension is None:
+            return {
+                degree: range(len(labels))
+                for degree, labels in enumerate(self._labels)
+            }
+        if dimension < 0 or dimension > self.dimension:
+            return ()
+        return range(len(self._labels[dimension]))
+
+    def f_vector(self) -> tuple[int, ...]:
+        """Return the number of nondegenerate cells in every dimension."""
+        return tuple(len(labels) for labels in self._labels)
+
+    def face(self, degree: int, cell: int, index: int) -> int | None:
+        """Return a normalized boundary face, or ``None`` if degenerate."""
+        reference = self.face_reference(self.nondegenerate(degree, cell), index)
+        return reference.cell if reference.is_nondegenerate else None
+
+    def face_reference(
+        self,
+        reference: SimplexReference,
+        index: int,
+    ) -> SimplexReference:
+        """Apply one face map without prematurely discarding degeneracies."""
+        if index < 0 or index > reference.dimension:
+            raise IndexError("face index is outside the simplex")
+        if reference.is_nondegenerate:
+            components = tuple(
+                self.base.face_reference(
+                    self._references[reference.degree][component],
+                    index,
+                )
+                for component in self._labels[reference.degree][reference.cell]
+            )
+            return self._normalize_components(components)
+
+        composite = reference.operator[:index] + reference.operator[index + 1 :]
+        image = tuple(dict.fromkeys(composite))
+        image_to_position = {value: position for position, value in enumerate(image)}
+        quotient_operator = tuple(image_to_position[value] for value in composite)
+
+        if image == tuple(range(reference.degree + 1)):
+            restricted = self.nondegenerate(reference.degree, reference.cell)
+        else:
+            restricted = self._restrict_reference(
+                reference.degree,
+                reference.cell,
+                image,
+            )
+        return SimplexReference(
+            restricted.degree,
+            restricted.cell,
+            tuple(restricted.operator[value] for value in quotient_operator),
+        )
+
+    def restrict(
+        self,
+        degree: int,
+        cell: int,
+        positions: tuple[int, ...],
+    ) -> int | None:
+        """Restrict a cell and return its normalized cell, if nondegenerate."""
+        if not positions:
+            raise ValueError("a restriction needs at least one retained position")
+        if tuple(sorted(set(positions))) != positions:
+            raise ValueError("retained positions must be strictly increasing")
+        if positions[-1] > degree:
+            raise ValueError("retained position is outside the cell")
+        reference = self._restrict_reference(degree, cell, positions)
+        return reference.cell if reference.is_nondegenerate else None
+
+    def cohomology(
+        self,
+        p: int = 2,
+        *,
+        reduced: bool = False,
+        convention: int = 1,
+    ) -> PrimeFieldCohomology:
+        """Return normalized mod-``p`` cohomology with a chosen basis."""
+        return PrimeFieldCohomology(self, p=p, reduced=reduced, convention=convention)
+
+    def symmetric_power(self, power: int):
+        """Return a further symmetric power of this finite simplicial set."""
+        if not isinstance(power, int) or isinstance(power, bool):
+            raise TypeError("power must be an integer")
+        if power < 1:
+            raise ValueError("power must be positive")
+        if power == 1:
+            return self
+        return SymmetricPowerSimplicialSet(self, power)
+
+    def symmetric_power_f_vector(self, power: int) -> tuple[int, ...]:
+        """Count a further symmetric power without constructing it."""
+        _validate_symmetric_power(power)
+        return _symmetric_power_f_vector(self.f_vector(), power)
+
+    def _restrict_reference(
+        self,
+        degree: int,
+        cell: int,
+        positions: tuple[int, ...],
+    ) -> SimplexReference:
+        components = tuple(
+            _restrict_reference_on_model(
+                self.base,
+                self._references[degree][component],
+                positions,
+            )
+            for component in self._labels[degree][cell]
+        )
+        return self._normalize_components(components)
+
+    def _normalize_components(
+        self,
+        components: tuple[SimplexReference, ...],
+    ) -> SimplexReference:
+        total_degree = components[0].dimension
+        common = _common_degeneracies(tuple(
+            component.operator for component in components
+        ))
+        quotient_operator = _operator_from_degeneracies(total_degree, common)
+        base_degree = total_degree - len(common)
+
+        representatives = []
+        previous = None
+        for position, value in enumerate(quotient_operator):
+            if value != previous:
+                representatives.append(position)
+                previous = value
+        label = tuple(sorted(
+            self._reference_indices[base_degree][SimplexReference(
+                component.degree,
+                component.cell,
+                tuple(
+                    component.operator[position]
+                    for position in representatives
+                ),
+            )]
+            for component in components
+        ))
+        return SimplexReference(
+            base_degree,
+            self._label_indices[base_degree][label],
+            quotient_operator,
+        )
+
+
+def _reference_key(reference: SimplexReference):
+    return reference.degree, reference.cell, reference.operator
+
+
+def _restrict_reference_on_model(model, reference, positions):
+    omitted = set(range(reference.dimension + 1)).difference(positions)
+    for index in sorted(omitted, reverse=True):
+        reference = model.face_reference(reference, index)
+    return reference
+
+
+def _validate_symmetric_power(power: int) -> None:
+    if not isinstance(power, int) or isinstance(power, bool):
+        raise TypeError("power must be an integer")
+    if power < 1:
+        raise ValueError("power must be positive")
+
+
+def _symmetric_power_f_vector(
+    base_f_vector: tuple[int, ...],
+    power: int,
+) -> tuple[int, ...]:
+    dimension = len(base_f_vector) - 1
+    answer = []
+    for total_degree in range(power * dimension + 1):
+        count = 0
+        for common_count in range(total_degree + 1):
+            available = sum(
+                cell_count * comb(total_degree - common_count, degree)
+                for degree, cell_count in enumerate(base_f_vector)
+                if degree <= total_degree - common_count
+            )
+            count += (
+                (-1) ** common_count
+                * comb(total_degree, common_count)
+                * comb(available + power - 1, power)
+            )
+        answer.append(count)
+    return tuple(answer)

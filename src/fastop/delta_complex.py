@@ -113,12 +113,12 @@ class DeltaComplex:
         """Return cell indices, either in one dimension or grouped by degree."""
         if dimension is None:
             return {
-                degree: tuple(range(len(degree_faces)))
+                degree: range(len(degree_faces))
                 for degree, degree_faces in enumerate(self.face_maps)
             }
         if dimension < 0 or dimension > self.dimension:
             return ()
-        return tuple(range(len(self.face_maps[dimension])))
+        return range(len(self.face_maps[dimension]))
 
     def f_vector(self) -> tuple[int, ...]:
         """Return the number of cells in every nonnegative dimension."""
