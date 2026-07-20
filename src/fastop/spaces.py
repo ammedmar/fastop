@@ -5,6 +5,7 @@ from __future__ import annotations
 from itertools import combinations, product
 
 from fastop.delta_complex import DeltaComplex
+from fastop.group_action import FiniteGroupAction
 from fastop.simplicial import SimplicialComplex
 from fastop.simplicial_set import SimplicialSet, SymmetricPowerSimplicialSet
 
@@ -149,7 +150,8 @@ def lens_space(dimension: int, order: int = 3) -> DeltaComplex:
         )
         for degree, labels in enumerate(labels_by_degree)
     )
-    return cover.quotient([generator], require_free=True)
+    action = FiniteGroupAction.cyclic(generator)
+    return cover.quotient(action, require_free=True)
 
 
 def minimal_simplicial_sphere(dimension: int) -> SimplicialSet:
@@ -210,6 +212,11 @@ def minimal_simplicial_surface(genus: int) -> SimplicialSet:
     ]))
 
 
+def orientable_surface(genus: int) -> SimplicialSet:
+    """Return a compact simplicial-set model of the genus-``genus`` surface."""
+    return minimal_simplicial_surface(genus)
+
+
 def symmetric_product_of_torus(
     power: int,
 ) -> SimplicialSet | SymmetricPowerSimplicialSet:
@@ -223,6 +230,18 @@ def symmetric_product_of_surface(
 ) -> SimplicialSet | SymmetricPowerSimplicialSet:
     """Return a symmetric power of the closed orientable genus-``genus`` surface."""
     return minimal_simplicial_surface(genus).symmetric_power(power)
+
+
+def symmetric_product_of_curve(
+    genus: int,
+    power: int = 3,
+) -> SimplicialSet | SymmetricPowerSimplicialSet:
+    """Return the symmetric power of a smooth projective curve by genus.
+
+    The finite model depends only on the topology of the underlying closed
+    orientable surface; no choice of complex structure is required.
+    """
+    return symmetric_product_of_surface(genus, power)
 
 
 def moore_space(order: int = 3) -> SimplicialComplex:

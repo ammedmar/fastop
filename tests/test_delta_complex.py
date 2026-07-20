@@ -1,6 +1,6 @@
 import pytest
 
-from fastop import DeltaComplex, spaces
+from fastop import DeltaComplex, FiniteGroupAction, spaces
 
 
 def test_face_map_circle_keeps_repeated_faces_and_cancels_its_boundary():
@@ -78,6 +78,34 @@ def test_sage_cells_adapter_copies_dense_face_tables():
 
     assert circle.face_maps == (((),), ((0, 0),))
     assert circle.cohomology(p=3).betti_numbers() == {0: 1, 1: 1}
+
+
+def test_public_group_action_builds_a_cyclic_face_map_quotient():
+    order = 5
+    circle = DeltaComplex([
+        [() for _ in range(order)],
+        [((index + 1) % order, index) for index in range(order)],
+    ])
+    rotation = FiniteGroupAction.from_cell_maps(
+        circle,
+        lambda degree, cell: (cell + 1) % order,
+    )
+
+    assert rotation.order(circle) == order
+    assert rotation.is_free(circle)
+
+    quotient = circle.quotient(rotation, require_free=True)
+
+    assert quotient.face_maps == (((),), ((0, 0),))
+    assert quotient.cohomology(p=5).betti_numbers() == {0: 1, 1: 1}
+
+    explicit_rotation = FiniteGroupAction.cyclic(rotation.generators[0])
+    assert explicit_rotation.order(circle) == order
+
+
+def test_public_group_action_requires_a_generator():
+    with pytest.raises(ValueError, match="at least one generator"):
+        FiniteGroupAction(())
 
 
 def test_delta_complex_validates_face_tables():

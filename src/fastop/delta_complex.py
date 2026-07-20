@@ -7,6 +7,7 @@ from typing import Iterable, TYPE_CHECKING
 
 from fastop._group_action import (
     CellAction,
+    FiniteGroupAction,
     cell_orbits,
     normalize_actions,
     validate_free_action,
@@ -156,7 +157,7 @@ class DeltaComplex:
 
     def quotient(
         self,
-        generators: Iterable[Iterable[Iterable[int]]],
+        generators: FiniteGroupAction | Iterable[Iterable[Iterable[int]]],
         *,
         require_free: bool = False,
     ) -> "DeltaComplex":

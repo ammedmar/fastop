@@ -6,8 +6,9 @@ from fastop.cohomology import (
     PrimeFieldCohomology,
     PrimeFieldCohomologyElement,
 )
-from fastop.delta_complex import DeltaComplex
 from fastop import spaces
+from fastop.delta_complex import DeltaComplex
+from fastop.group_action import FiniteGroupAction
 from fastop.simplicial import SimplicialComplex
 from fastop.simplicial_set import (
     SimplexReference,
@@ -23,6 +24,7 @@ __all__ = [
     "PrimeFieldCohomology",
     "PrimeFieldCohomologyElement",
     "DeltaComplex",
+    "FiniteGroupAction",
     "SimplicialComplex",
     "SimplexReference",
     "SimplicialSet",

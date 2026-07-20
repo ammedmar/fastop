@@ -2,26 +2,103 @@
 
 from __future__ import annotations
 
-from typing import Iterable
+from dataclasses import dataclass
+from typing import Callable, Iterable
 
 CellAction = tuple[tuple[int, ...], ...]
+CellMap = Callable[[int, int], int]
+
+
+@dataclass(frozen=True)
+class FiniteGroupAction:
+    """A finite cell action specified by a set of permutation generators.
+
+    Each generator contains one permutation for every cell degree.  The
+    quotient validates that these permutations commute with all face maps.
+    """
+
+    generators: tuple[CellAction, ...]
+
+    def __post_init__(self) -> None:
+        normalized = _normalize_raw_actions(self.generators)
+        if not normalized:
+            raise ValueError("a finite group action needs at least one generator")
+        object.__setattr__(self, "generators", normalized)
+
+    @classmethod
+    def cyclic(cls, generator: Iterable[Iterable[int]]) -> "FiniteGroupAction":
+        """Create a cyclic action from one graded cell permutation."""
+        return cls((_normalize_raw_action(generator),))
+
+    @classmethod
+    def from_cell_maps(
+        cls,
+        model,
+        *generators: CellMap,
+    ) -> "FiniteGroupAction":
+        """Create generators from callables ``(degree, cell) -> image``."""
+        if not generators:
+            raise ValueError("a finite group action needs at least one generator")
+        counts = model.f_vector()
+        return cls(
+            tuple(
+                tuple(
+                    tuple(generator(degree, cell) for cell in range(cell_count))
+                    for degree, cell_count in enumerate(counts)
+                )
+                for generator in generators
+            )
+        )
+
+    def order(self, model) -> int:
+        """Return the order of the generated permutation group."""
+        counts = model.f_vector()
+        validate_permutations(self.generators, counts)
+        return len(generated_actions(self.generators, counts))
+
+    def is_free(self, model) -> bool:
+        """Return whether every nonidentity element is fixed-cell free."""
+        counts = model.f_vector()
+        validate_permutations(self.generators, counts)
+        try:
+            validate_free_action(self.generators, counts)
+        except ValueError:
+            return False
+        return True
 
 
 def normalize_actions(
+    generators: FiniteGroupAction | Iterable[Iterable[Iterable[int]]],
+) -> tuple[CellAction, ...]:
+    if isinstance(generators, FiniteGroupAction):
+        return generators.generators
+    return _normalize_raw_actions(generators)
+
+
+def _normalize_raw_actions(
     generators: Iterable[Iterable[Iterable[int]]],
 ) -> tuple[CellAction, ...]:
-    return tuple(
-        tuple(tuple(permutation) for permutation in generator)
-        for generator in generators
-    )
+    return tuple(_normalize_raw_action(generator) for generator in generators)
 
 
-def validate_permutations(actions: tuple[CellAction, ...], counts: tuple[int, ...]) -> None:
+def _normalize_raw_action(
+    generator: Iterable[Iterable[int]],
+) -> CellAction:
+    return tuple(tuple(permutation) for permutation in generator)
+
+
+def validate_permutations(
+    actions: tuple[CellAction, ...],
+    counts: tuple[int, ...],
+) -> None:
     for action in actions:
         if len(action) != len(counts):
             raise ValueError("a cell action needs one permutation per dimension")
         for permutation, cell_count in zip(action, counts):
-            if len(permutation) != cell_count or set(permutation) != set(range(cell_count)):
+            if (
+                len(permutation) != cell_count
+                or set(permutation) != set(range(cell_count))
+            ):
                 raise ValueError("each cell action must be a permutation")
 
 
