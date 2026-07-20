@@ -48,8 +48,8 @@ H = suspended.cohomology(p=3)
 assert H.operation_rank(4, 1) == 1
 ```
 
-The implementation roadmap for face-map input, compact quotients, and the
-six-manifold search is recorded in [docs/roadmap.md](docs/roadmap.md).
+The completed implementation program for face-map input, compact quotients,
+and the six-manifold search is recorded in [docs/roadmap.md](docs/roadmap.md).
 
 Finite Delta-complexes use dense face maps compatible with Sage's
 `DeltaComplex.cells()` output.  This permits loops, repeated faces, and other
@@ -65,8 +65,26 @@ circle = DeltaComplex([
 assert circle.cohomology(p=3).betti_numbers() == {0: 1, 1: 1}
 ```
 
-Strict cell actions can be quotiented without subdivision.  For example, the
-catalog lens space is the diagonal cyclic quotient of a join of circles:
+Strict cell actions can be quotiented without subdivision. Actions may be
+specified by graded permutations or by cell maps:
+
+```python
+from fastop import DeltaComplex, FiniteGroupAction
+
+pentagon = DeltaComplex([
+    [() for _ in range(5)],
+    [((i + 1) % 5, i) for i in range(5)],
+])
+rotation = FiniteGroupAction.from_cell_maps(
+    pentagon,
+    lambda degree, cell: (cell + 1) % 5,
+)
+circle = pentagon.quotient(rotation, require_free=True)
+assert circle.f_vector() == (1, 1)
+```
+
+The catalog lens space uses the same interface for the diagonal cyclic
+quotient of a join of circles:
 
 ```python
 L = spaces.lens_space(7, 3)
@@ -83,11 +101,11 @@ CP3 = spaces.minimal_simplicial_sphere(2).symmetric_power(3)
 assert CP3.f_vector() == (1, 0, 3, 10, 25, 30, 15)
 assert CP3.cohomology(p=3).operation_rank(2, 1) == 1
 
-X = spaces.symmetric_product_of_surface(genus=1, power=3)
+X = spaces.symmetric_product_of_curve(genus=1, power=3)
 assert X.f_vector() == (1, 19, 126, 380, 572, 420, 120)
 assert X.cohomology(p=3).operation_rank(2, 1) == 1
 
-genus_two = spaces.symmetric_product_of_surface(genus=2)
+genus_two = spaces.symmetric_product_of_curve(genus=2)
 assert sum(genus_two.f_vector()) == 41_478
 assert genus_two.cohomology(p=3).operation_rank(2, 1) == 1
 ```
@@ -97,10 +115,10 @@ The sphere is the projective-space ground truth, while the torus provides a
 1.8-million-cell positive-genus computation:
 
 ```python
-CP5 = spaces.symmetric_product_of_surface(genus=0, power=5)
+CP5 = spaces.symmetric_product_of_curve(genus=0, power=5)
 assert CP5.cohomology(p=5).operation_rank(2, 1) == 1
 
-torus_fifth = spaces.symmetric_product_of_surface(genus=1, power=5)
+torus_fifth = spaces.symmetric_product_of_curve(genus=1, power=5)
 assert sum(torus_fifth.f_vector()) == 1_797_894
 assert torus_fifth.cohomology(p=5).operation_rank(2, 1) == 1
 ```
@@ -122,6 +140,26 @@ and their performance envelope are recorded in
 
 ## Development
 
+Install the package from a checkout with:
+
 ```bash
-.venv/bin/python -m pytest
+python -m pip install .
+```
+
+The C accelerator is optional; the package retains a pure-Python fallback if
+it cannot be compiled. The supported public models, constructors, quotient
+interface, and operation coverage are summarized in
+[docs/package-api.md](docs/package-api.md).
+
+Install the development dependencies and run the routine suite with:
+
+```bash
+python -m pip install -e '.[dev]'
+python -m pytest
+```
+
+The two memory-intensive prime-five showcase regressions are opt-in:
+
+```bash
+python -m pytest -m large
 ```

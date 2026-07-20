@@ -6,6 +6,7 @@ setup(
         Extension(
             "fastop._native",
             sources=["src/fastop/_native.c"],
+            optional=True,
         ),
     ],
 )
