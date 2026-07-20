@@ -41,7 +41,6 @@ def test_abstract_complex_conversion_preserves_cohomology_and_operations():
 
 
 def test_face_restrictions_support_nontrivial_odd_primary_formulas():
-    m7 = spaces.matching_complex(7).as_delta_complex().cohomology(p=3)
     suspended_cp3 = (
         spaces.complex_projective_space(3)
         .suspension()
@@ -49,7 +48,6 @@ def test_face_restrictions_support_nontrivial_odd_primary_formulas():
         .cohomology(p=3)
     )
 
-    assert m7.operation_rank(1, 0, bockstein=True) == 1
     assert suspended_cp3.operation_rank(3, 1) == 1
 
 

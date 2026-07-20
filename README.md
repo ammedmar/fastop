@@ -35,14 +35,10 @@ a = M.basis(1)[0]
 assert a.operation(0, bockstein=True, algorithm="prime-three") == M.basis(2)[0]
 ```
 
-The catalog also contains the matching complex $M_7$, a naturally
-occurring odd-primary example, and simplicial suspension can move a known
-operation into a range where it is not a cup power:
+Simplicial suspension can move a known operation into a range where it is not
+a cup power:
 
 ```python
-M7 = spaces.matching_complex(7).cohomology(p=3)
-assert M7.operation_rank(1, 0, bockstein=True) == 1
-
 suspended = spaces.complex_projective_space(3).suspension(2)
 H = suspended.cohomology(p=3)
 assert H.operation_rank(4, 1) == 1
@@ -150,6 +146,17 @@ The C accelerator is optional; the package retains a pure-Python fallback if
 it cannot be compiled. The supported public models, constructors, quotient
 interface, and operation coverage are summarized in
 [docs/package-api.md](docs/package-api.md).
+
+The package-facing documentation is generated with Sphinx from the public
+docstrings and narrative sources:
+
+```bash
+python -m pip install -e '.[docs]'
+cd docs
+make html
+```
+
+Open `docs/build/html/index.html` after the build.
 
 Install the development dependencies and run the routine suite with:
 

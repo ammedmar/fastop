@@ -78,11 +78,6 @@ def report(label, build, operations, repeats: int) -> None:
 def cases():
     cp3 = spaces.complex_projective_space(3)
     return {
-        "m7": (
-            "Matching complex M7",
-            lambda: spaces.matching_complex(7),
-            (("beta P0: H1 -> H2", 1, 0, True),),
-        ),
         "suspension-1": (
             "Suspension Sigma CP3",
             lambda: cp3.suspension(),

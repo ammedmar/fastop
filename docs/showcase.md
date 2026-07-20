@@ -6,7 +6,6 @@ through the public `fastop` API.
 
 | Model | Nondegenerate cells | Mod-3 Betti numbers | Detected operation |
 | --- | ---: | --- | --- |
-| Matching complex M₇ | 231 | `(1, 1, 21)` | rank-one βP⁰: H¹ → H² |
 | ΣCP³ | 26,654 | `(1, 0, 0, 1, 0, 1, 0, 1)` | rank-one P¹: H³ → H⁷ |
 | Σ²CP³ | 79,964 | `(1, 0, 0, 0, 1, 0, 1, 0, 1)` | rank-one P¹: H⁴ → H⁸ |
 | L⁷(3) | 800 | `(1, 1, 1, 1, 1, 1, 1, 1)` | rank-one βP⁰ and P¹ |
@@ -16,7 +15,7 @@ through the public `fastop` API.
 | Sym⁵(S²) = CP⁵ | 22,010 | one class in even degrees 0–10 | rank-one mod-5 P¹ |
 | Sym⁵(T²) | 1,797,894 | measured `b₂=2`, `b₁₀=1` | rank-one mod-5 P¹ |
 
-The first four cases provide ground truth and a suspension stress test.
+The first three cases provide ground truth and a suspension stress test.
 Sym³(S²) validates the simplicial-set product and quotient pipeline against
 CP³. The surface sequence Sym³(Σ_g) then holds the dimension and operation
 fixed while increasing both topology and computational complexity. Genus two
@@ -30,7 +29,6 @@ guarantees.
 
 | Model | Build | Cohomology | Warm operation |
 | --- | ---: | ---: | ---: |
-| M₇ | 0.000197 s | 0.000761 s | 0.000078 s |
 | ΣCP³ | 0.021379 s | 0.147362 s | 0.001332 s |
 | Σ²CP³ | 0.098188 s | 0.507693 s | 0.016326 s |
 | L⁷(3) | 0.013023 s | 0.004228 s | 0.000111–0.000172 s |

@@ -6,9 +6,6 @@ finite simplicial sets, including compact quotients and symmetric products.
 
 ## 1. Recorded simplicial examples — complete
 
-- The matching complex M₇ = Cl(KG(7,2)) has mod-3 Betti numbers
-  `(1, 1, 21)` in degrees 0 through 2, and
-  βP⁰: H¹(M₇) → H²(M₇) has rank 1.
 - Simplicial suspension is a public construction.
 - On ΣᵏCP³, P¹ remains nonzero after suspension; in particular,
   P¹: H⁴(Σ²CP³) → H⁸(Σ²CP³) has rank 1, outside the unstable cup-power

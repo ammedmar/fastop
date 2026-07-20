@@ -261,17 +261,6 @@ def test_complex_projective_space_catalog_includes_cp2_and_cp3():
     assert len(cp3.facets) == 622
 
 
-def test_matching_complex_m7_records_a_natural_mod_three_bockstein():
-    m7 = spaces.matching_complex(7)
-    cohomology = m7.cohomology(p=3)
-
-    assert m7.dimension == 2
-    assert len(m7.vertices) == 21
-    assert len(m7.facets) == 105
-    assert cohomology.betti_numbers() == {0: 1, 1: 1, 2: 21}
-    assert cohomology.operation_rank(1, 0, bockstein=True) == 1
-
-
 def test_suspended_cp3_preserves_the_nonzero_reduced_power():
     suspended = spaces.complex_projective_space(3).suspension()
     cohomology = suspended.cohomology(p=3)

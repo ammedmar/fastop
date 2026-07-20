@@ -56,36 +56,6 @@ def complex_projective_space(dimension: int) -> SimplicialComplex:
     raise NotImplementedError("only complex projective spaces of dimensions 2 and 3 are included")
 
 
-def matching_complex(order: int) -> SimplicialComplex:
-    """Return the matching complex of the complete graph on ``order`` vertices.
-
-    Vertices of the returned complex are the edges of the complete graph in
-    lexicographic order.  Its facets are the maximum-cardinality matchings.
-    """
-    if not isinstance(order, int) or isinstance(order, bool):
-        raise TypeError("order must be an integer")
-    if order < 2:
-        raise ValueError("order must be at least two")
-
-    graph_edges = tuple(combinations(range(order), 2))
-    edge_to_index = {edge: index for index, edge in enumerate(graph_edges)}
-    vertices = tuple(range(order))
-    if order % 2:
-        matchings = (
-            matching
-            for omitted in vertices
-            for matching in _perfect_matchings(
-                tuple(vertex for vertex in vertices if vertex != omitted)
-            )
-        )
-    else:
-        matchings = _perfect_matchings(vertices)
-    return SimplicialComplex(
-        tuple(sorted(edge_to_index[edge] for edge in matching))
-        for matching in matchings
-    )
-
-
 def lens_space(dimension: int, order: int = 3) -> DeltaComplex:
     """Return a compact Delta-complex model of a standard lens space.
 
@@ -258,18 +228,6 @@ def _validate_dimension(dimension: int) -> None:
         raise TypeError("dimension must be an integer")
     if dimension < 0:
         raise ValueError("dimension must be nonnegative")
-
-
-def _perfect_matchings(vertices: tuple[int, ...]):
-    if not vertices:
-        yield ()
-        return
-    first = vertices[0]
-    for index in range(1, len(vertices)):
-        second = vertices[index]
-        remaining = vertices[1:index] + vertices[index + 1 :]
-        for matching in _perfect_matchings(remaining):
-            yield ((first, second),) + matching
 
 
 def _lens_join_face(label: tuple, local_index: int, order: int) -> tuple:
