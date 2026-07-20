@@ -98,6 +98,8 @@ The example-search phase now feeds a small public API:
   smaller ground truths stay in the routine suite.
 - the native extension is an optional accelerator, so a compiler failure does
   not prevent installation of the pure-Python package.
+- GitHub Actions verifies the routine suite on Python 3.10 through 3.14,
+  builds the generated documentation, and validates source and wheel artifacts.
 
 The remaining work before a first alpha release is release administration:
 choose the alpha version, build and inspect distribution artifacts, publish to

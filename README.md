@@ -170,3 +170,8 @@ The two memory-intensive prime-five showcase regressions are opt-in:
 ```bash
 python -m pytest -m large
 ```
+
+GitHub Actions runs the routine suite on Python 3.10 through 3.14, builds the
+Sphinx site with warnings treated as errors, and checks both distribution
+artifacts. The large regressions remain an explicit local or release-machine
+run.
