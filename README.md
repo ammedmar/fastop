@@ -50,6 +50,20 @@ assert H.operation_rank(4, 1) == 1
 The implementation roadmap for face-map input, compact quotients, and the
 six-manifold search is recorded in [docs/roadmap.md](docs/roadmap.md).
 
+Finite Delta-complexes use dense face maps compatible with Sage's
+`DeltaComplex.cells()` output.  This permits loops, repeated faces, and other
+compact semi-simplicial models:
+
+```python
+from fastop import DeltaComplex
+
+circle = DeltaComplex([
+    [()],       # one vertex
+    [(0, 0)],   # one edge with both faces equal to that vertex
+])
+assert circle.cohomology(p=3).betti_numbers() == {0: 1, 1: 1}
+```
+
 ## Development
 
 ```bash

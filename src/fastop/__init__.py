@@ -6,6 +6,7 @@ from fastop.cohomology import (
     PrimeFieldCohomology,
     PrimeFieldCohomologyElement,
 )
+from fastop.delta_complex import DeltaComplex
 from fastop import spaces
 from fastop.simplicial import SimplicialComplex
 
@@ -16,6 +17,7 @@ __all__ = [
     "Mod2CohomologyElement",
     "PrimeFieldCohomology",
     "PrimeFieldCohomologyElement",
+    "DeltaComplex",
     "SimplicialComplex",
     "spaces",
     "__version__",

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 from fastop._cochain_evaluation import (
     cochain_operation_vector_from_universal,
+    evaluate_all_targets_mod_2,
     evaluate_source_mod_2,
 )
 from fastop._linear_algebra import (
@@ -74,7 +75,7 @@ class PrimeFieldCohomology:
         self.reduced = reduced
         self.convention = convention
         self._faces = {
-            degree: tuple(sorted(complex_.faces(degree)))
+            degree: tuple(sorted(complex_.cells(degree)))
             for degree in range(complex_.dimension + 1)
         }
         self._face_to_index = {
@@ -295,11 +296,24 @@ class PrimeFieldCohomology:
         source_data = self._degree_data[degree]
         cocycle_vector = self.cocycle_vector(element, degree)
         support = [source_data.faces[index] for index in cocycle_vector]
-        target_support = evaluate_source_mod_2(
-            target_degree + 1,
-            support,
-            set(target_data.faces),
-        )
+        if self.complex.supports_vertex_algorithms:
+            target_support = evaluate_source_mod_2(
+                target_degree + 1,
+                support,
+                set(target_data.faces),
+            )
+        else:
+            cochain = {
+                source_data.faces[index]: coefficient
+                for index, coefficient in cocycle_vector.items()
+            }
+            target_support = evaluate_all_targets_mod_2(
+                self.complex,
+                target_data.faces,
+                cochain,
+                source_degree=degree,
+                target_degree=target_degree,
+            )
         target_vector = {
             target_data.face_to_index[simplex]: 1
             for simplex in target_support
@@ -423,11 +437,17 @@ class PrimeFieldCohomology:
             signs = tuple(((-1) ** index) % self.p for index in range(degree + 1))
             degree_columns = []
             for simplex in self._faces[degree]:
-                column = {
-                    lower_index[simplex[:index] + simplex[index + 1 :]]: signs[index]
-                    for index in range(degree + 1)
-                    if signs[index]
-                }
+                column = {}
+                for index, sign in enumerate(signs):
+                    if not sign:
+                        continue
+                    face = self.complex.face(degree, simplex, index)
+                    face_index = lower_index[face]
+                    coefficient = (column.get(face_index, 0) + sign) % self.p
+                    if coefficient:
+                        column[face_index] = coefficient
+                    elif face_index in column:
+                        del column[face_index]
                 degree_columns.append(column)
             columns[degree] = degree_columns
         return columns

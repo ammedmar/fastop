@@ -71,18 +71,30 @@ def cochain_operation_vector_from_universal(
     algorithm: str = "auto",
 ) -> Vector:
     """Evaluate universal data and return a target-degree vector."""
-    target_faces = complex_.faces(universal.target_degree)
+    target_faces = complex_.cells(universal.target_degree)
     if algorithm == "auto":
-        algorithm = _auto_evaluation_algorithm(target_faces, cochain, universal)
+        algorithm = _auto_evaluation_algorithm(
+            target_faces,
+            cochain,
+            universal,
+            vertex_simplices=complex_.supports_vertex_algorithms,
+        )
     if algorithm in {"all_targets", "direct", "all-target"}:
-        result = evaluate_all_targets(target_faces, cochain, universal)
+        result = evaluate_all_targets_on_model(
+            complex_,
+            target_faces,
+            cochain,
+            universal,
+        )
     elif algorithm in {"target_omissions", "target", "signature", "signatures"}:
+        _require_vertex_simplices(complex_, algorithm)
         result = evaluate_target_omissions(
             target_faces,
             cochain,
             universal.signature_table(),
         )
     elif algorithm in {"source_mod_3", "prime-three"}:
+        _require_vertex_simplices(complex_, algorithm)
         if universal.p != 3:
             raise ValueError("source_mod_3 is only available at p=3")
         result = evaluate_source_mod_3(
@@ -91,6 +103,7 @@ def cochain_operation_vector_from_universal(
             universal.signature_table(),
         )
     elif algorithm in {"source_focused", "support", "sparse"}:
+        _require_vertex_simplices(complex_, algorithm)
         result = evaluate_source_focused(
             target_faces,
             cochain,
@@ -108,8 +121,12 @@ def _auto_evaluation_algorithm(
     target_faces: set["Simplex"] | frozenset["Simplex"],
     cochain: dict["Simplex", int],
     universal: UniversalOperation,
+    *,
+    vertex_simplices: bool = True,
 ) -> str:
     """Choose an evaluator using coarse work estimates."""
+    if not vertex_simplices:
+        return "all_targets"
     support_size = sum(
         1
         for face, coefficient in cochain.items()
@@ -126,6 +143,14 @@ def _auto_evaluation_algorithm(
     if source_work < target_work // 4:
         return "source_focused"
     return "all_targets"
+
+
+def _require_vertex_simplices(complex_, algorithm: str) -> None:
+    if not complex_.supports_vertex_algorithms:
+        raise ValueError(
+            f"{algorithm!r} requires an abstract simplicial complex; "
+            "use 'all_targets' for face-map input"
+        )
 
 
 def evaluate_source_mod_2(
@@ -265,6 +290,82 @@ def evaluate_all_targets(
         coefficient %= universal.p
         if coefficient:
             answer[target] = coefficient
+    return answer
+
+
+def evaluate_all_targets_on_model(
+    complex_,
+    target_cells,
+    cochain,
+    universal: UniversalOperation,
+):
+    """Evaluate universal terms using the model's local face restrictions."""
+    if complex_.supports_vertex_algorithms:
+        return evaluate_all_targets(target_cells, cochain, universal)
+
+    tensor_terms = tuple(universal.terms.items())
+    answer = {}
+    missing = object()
+    for target in target_cells:
+        coefficient = 0
+        factor_coefficients = {}
+        for tensor, tensor_coefficient in tensor_terms:
+            term_value = tensor_coefficient
+            for factor in tensor:
+                source_coefficient = factor_coefficients.get(factor, missing)
+                if source_coefficient is missing:
+                    source = complex_.restrict(
+                        universal.target_degree,
+                        target,
+                        factor,
+                    )
+                    source_coefficient = cochain.get(source)
+                    factor_coefficients[factor] = source_coefficient
+                if source_coefficient is None:
+                    break
+                term_value *= source_coefficient
+            else:
+                coefficient += term_value
+        coefficient %= universal.p
+        if coefficient:
+            answer[target] = coefficient
+    return answer
+
+
+def evaluate_all_targets_mod_2(
+    complex_,
+    target_cells,
+    cochain,
+    *,
+    source_degree: int,
+    target_degree: int,
+):
+    """Evaluate a square on every target using local face positions."""
+    positions = tuple(range(target_degree + 1))
+    source_factors = tuple(combinations(positions, source_degree + 1))
+    contributing_pairs = tuple(
+        (left, right)
+        for left, right in combinations(source_factors, 2)
+        if len(set(left) | set(right)) == target_degree + 1
+        and _mod2_square_pair_contributes(
+            positions,
+            set(left),
+            set(right),
+        )
+    )
+
+    answer = set()
+    for target in target_cells:
+        factor_coefficients = {}
+        coefficient = 0
+        for left, right in contributing_pairs:
+            for factor in (left, right):
+                if factor not in factor_coefficients:
+                    source = complex_.restrict(target_degree, target, factor)
+                    factor_coefficients[factor] = cochain.get(source, 0) % 2
+            coefficient ^= factor_coefficients[left] & factor_coefficients[right]
+        if coefficient:
+            answer.add(target)
     return answer
 
 

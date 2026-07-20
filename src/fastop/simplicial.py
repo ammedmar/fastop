@@ -48,6 +48,11 @@ class SimplicialComplex:
         """Return the vertices in increasing order."""
         return tuple(sorted({vertex for facet in self.facets for vertex in facet}))
 
+    @property
+    def supports_vertex_algorithms(self) -> bool:
+        """Return whether cells carry globally comparable vertex sets."""
+        return True
+
     def faces(
         self, dimension: int | None = None
     ) -> dict[int, frozenset[Simplex]] | frozenset[Simplex]:
@@ -55,6 +60,31 @@ class SimplicialComplex:
         if dimension is None:
             return dict(self._faces_by_dimension)
         return self._faces_by_dimension.get(dimension, frozenset())
+
+    def cells(
+        self, dimension: int | None = None
+    ) -> dict[int, frozenset[Simplex]] | frozenset[Simplex]:
+        """Return simplices through the common finite-cell interface."""
+        return self.faces(dimension)
+
+    def face(self, degree: int, simplex: Simplex, index: int) -> Simplex:
+        """Return the ``index``-th face of one simplex."""
+        return simplex[:index] + simplex[index + 1 :]
+
+    def restrict(
+        self,
+        degree: int,
+        simplex: Simplex,
+        positions: tuple[int, ...],
+    ) -> Simplex:
+        """Restrict a simplex to the listed local vertex positions."""
+        return tuple(simplex[index] for index in positions)
+
+    def as_delta_complex(self):
+        """Return the same realization encoded only by face maps."""
+        from fastop.delta_complex import DeltaComplex
+
+        return DeltaComplex.from_simplicial_complex(self)
 
     def cohomology(
         self,
