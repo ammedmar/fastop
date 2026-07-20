@@ -113,6 +113,13 @@ The genus expansion and its extended benchmark are described in
 and their performance envelope are recorded in
 [docs/prime-five.md](docs/prime-five.md).
 
+## Notebooks
+
+- [Symmetric products of algebraic curves](notebooks/symmetric_products_of_curves.ipynb)
+  develops the genus family at primes 3 and 5.
+- [Lens spaces](notebooks/lens_spaces.ipynb) separately develops the cyclic
+  join quotients, their cell counts, Bocksteins, and reduced powers.
+
 ## Development
 
 ```bash
