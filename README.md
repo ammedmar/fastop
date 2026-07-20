@@ -20,9 +20,10 @@ u = CP2.basis(2)[0]
 assert u.operation(2) == CP2.basis(4)[0]
 ```
 
-Odd-primary operations are exposed on the same cohomology classes. These
-currently use the neighboring `oddp` package as a cochain-level engine, then
-project the resulting cocycle back to cohomology.
+Odd-primary operations are exposed on the same cohomology classes. Universal
+formulas are served from the built-in catalog when available, with the
+neighboring `oddp` package used as a development fallback for formulas not
+yet cataloged. The resulting cocycle is projected back to cohomology.
 
 ```python
 H = spaces.complex_projective_space(3).cohomology(p=3)
@@ -34,7 +35,7 @@ a = M.basis(1)[0]
 assert a.operation(0, bockstein=True, algorithm="prime-three") == M.basis(2)[0]
 ```
 
-The catalog also contains the matching complex (M_7), a naturally
+The catalog also contains the matching complex $M_7$, a naturally
 occurring odd-primary example, and simplicial suspension can move a known
 operation into a range where it is not a cup power:
 
@@ -73,6 +74,23 @@ H = L.cohomology(p=3)
 assert H.operation_rank(1, 0, bockstein=True) == 1
 assert H.operation_rank(2, 1) == 1
 ```
+
+Finite simplicial sets retain degeneracies until a complete face restriction
+has been evaluated. This makes very small symmetric-product models possible:
+
+```python
+CP3 = spaces.minimal_simplicial_sphere(2).symmetric_power(3)
+assert CP3.f_vector() == (1, 0, 3, 10, 25, 30, 15)
+assert CP3.cohomology(p=3).operation_rank(2, 1) == 1
+
+X = spaces.symmetric_product_of_torus(3)
+assert X.f_vector() == (1, 19, 126, 380, 572, 420, 120)
+assert X.cohomology(p=3).operation_rank(2, 1) == 1
+```
+
+Run `python benchmarks/showcase.py` for reproducible construction,
+cohomology, and operation timings on all showcase models. A reference run and
+the role of each example are recorded in [docs/showcase.md](docs/showcase.md).
 
 ## Development
 

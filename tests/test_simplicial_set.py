@@ -31,6 +31,47 @@ def test_delta_complex_conversion_freely_adds_degeneracies():
     assert simplicial_circle.cohomology(p=3).betti_numbers() == {0: 1, 1: 1}
 
 
+def test_sage_adapter_retains_degenerate_faces():
+    class FakeSimplex:
+        def __init__(self, dimension, *, underlying=None, degeneracies=()):
+            self._dimension = dimension
+            self._underlying = underlying or self
+            self._degeneracies = degeneracies
+
+        def dimension(self):
+            return self._dimension
+
+        def nondegenerate(self):
+            return self._underlying
+
+        def degeneracies(self):
+            return self._degeneracies
+
+    vertex = FakeSimplex(0)
+    top = FakeSimplex(2)
+    degenerate_edge = FakeSimplex(
+        1,
+        underlying=vertex,
+        degeneracies=(0,),
+    )
+
+    class FakeSageSimplicialSet:
+        @staticmethod
+        def cells():
+            return {0: (vertex,), 1: (), 2: (top,)}
+
+        @staticmethod
+        def faces(simplex):
+            assert simplex is top
+            return (degenerate_edge,) * 3
+
+    sphere = SimplicialSet.from_sage(FakeSageSimplicialSet())
+
+    assert sphere.f_vector() == (1, 0, 1)
+    assert sphere.face_maps[2][0][0].operator == (0, 0)
+    assert sphere.cohomology(p=3).betti_numbers() == {0: 1, 2: 1}
+
+
 def test_cartesian_cube_of_minimal_sphere_has_known_symmetric_quotient():
     sphere = SimplicialSet.minimal_sphere(2)
     cube = sphere.cartesian_product(sphere, sphere)
