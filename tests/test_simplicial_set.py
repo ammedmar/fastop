@@ -111,6 +111,29 @@ def test_symmetric_power_validates_power():
         circle.symmetric_power(0)
 
 
+@pytest.mark.parametrize(
+    ("genus", "f_vector", "betti"),
+    [
+        (0, (1, 0, 1), {0: 1, 2: 1}),
+        (1, (1, 3, 2), {0: 1, 1: 2, 2: 1}),
+        (2, (1, 9, 6), {0: 1, 1: 4, 2: 1}),
+        (3, (1, 15, 10), {0: 1, 1: 6, 2: 1}),
+    ],
+)
+def test_minimal_surface_models(genus, f_vector, betti):
+    surface = spaces.minimal_simplicial_surface(genus)
+
+    assert surface.f_vector() == f_vector
+    assert surface.cohomology(p=3).betti_numbers() == betti
+
+
+def test_minimal_surface_validates_genus():
+    with pytest.raises(TypeError, match="integer"):
+        spaces.minimal_simplicial_surface(True)
+    with pytest.raises(ValueError, match="nonnegative"):
+        spaces.minimal_simplicial_surface(-1)
+
+
 def test_symmetric_cube_of_torus_is_a_small_six_manifold_with_nonzero_p1():
     symmetric_cube = spaces.symmetric_product_of_torus(3)
     cohomology = symmetric_cube.cohomology(p=3)
@@ -123,6 +146,31 @@ def test_symmetric_cube_of_torus_is_a_small_six_manifold_with_nonzero_p1():
         3: 2,
         4: 2,
         5: 2,
+        6: 1,
+    }
+    assert cohomology.operation_rank(2, 1) == 1
+
+
+def test_symmetric_cube_of_genus_two_surface_matches_macdonald_betti_numbers():
+    symmetric_cube = spaces.symmetric_product_of_surface(2)
+    cohomology = symmetric_cube.cohomology(p=3)
+
+    assert symmetric_cube.f_vector() == (
+        1,
+        219,
+        2486,
+        9180,
+        15012,
+        11340,
+        3240,
+    )
+    assert cohomology.betti_numbers() == {
+        0: 1,
+        1: 4,
+        2: 7,
+        3: 8,
+        4: 7,
+        5: 4,
         6: 1,
     }
     assert cohomology.operation_rank(2, 1) == 1

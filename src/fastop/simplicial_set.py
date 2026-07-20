@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from functools import lru_cache
-from itertools import combinations, product
+from itertools import combinations, combinations_with_replacement, product
 from typing import Iterable, TYPE_CHECKING
 
 from fastop._group_action import (
@@ -352,23 +352,62 @@ class SimplicialSet:
         )
 
     def symmetric_power(self, power: int) -> "SimplicialSet":
-        """Return the quotient of a cartesian power by factor permutations."""
+        """Return the quotient of a cartesian power by factor permutations.
+
+        Orbit representatives are built directly as unordered tuples.  This
+        avoids materializing the much larger ordered cartesian power first.
+        """
         if not isinstance(power, int) or isinstance(power, bool):
             raise TypeError("power must be an integer")
         if power < 1:
             raise ValueError("power must be positive")
         if power == 1:
             return self
-        product_set = self.cartesian_product(*(self for _ in range(power - 1)))
-        generators = []
-        for index in range(power - 1):
-            permutation = list(range(power))
-            permutation[index], permutation[index + 1] = (
-                permutation[index + 1],
-                permutation[index],
-            )
-            generators.append(product_set.factor_permutation_action(permutation))
-        return product_set.quotient(generators)
+
+        labels_by_degree = []
+        for total_degree in range(power * self.dimension + 1):
+            references = tuple(sorted(
+                (
+                    SimplexReference(degree, cell, operator)
+                    for degree, degree_faces in enumerate(self.face_maps)
+                    if degree <= total_degree
+                    for cell in range(len(degree_faces))
+                    for operator in _surjections(total_degree, degree)
+                ),
+                key=lambda reference: (
+                    reference.degree,
+                    reference.cell,
+                    reference.operator,
+                ),
+            ))
+            labels_by_degree.append(tuple(
+                label
+                for label in combinations_with_replacement(references, power)
+                if not _common_degeneracies(tuple(
+                    component.operator for component in label
+                ))
+            ))
+
+        label_indices = tuple(
+            {label: index for index, label in enumerate(labels)}
+            for labels in labels_by_degree
+        )
+        symmetric_faces = [tuple(() for _ in labels_by_degree[0])]
+        for degree in range(1, len(labels_by_degree)):
+            symmetric_faces.append(tuple(
+                tuple(
+                    _normalize_symmetric_reference(
+                        tuple(
+                            self.face_reference(component, index)
+                            for component in label
+                        ),
+                        label_indices,
+                    )
+                    for index in range(degree + 1)
+                )
+                for label in labels_by_degree[degree]
+            ))
+        return SimplicialSet(symmetric_faces)
 
     def quotient(
         self,
@@ -544,6 +583,48 @@ def _normalize_product_reference(
         )
         for component in components
     )
+    return SimplexReference(
+        base_degree,
+        label_indices[base_degree][base_label],
+        quotient_operator,
+    )
+
+
+def _normalize_symmetric_reference(
+    components: tuple[SimplexReference, ...],
+    label_indices: tuple[dict[tuple[SimplexReference, ...], int], ...],
+) -> SimplexReference:
+    total_degree = components[0].dimension
+    common = _common_degeneracies(tuple(
+        component.operator for component in components
+    ))
+    quotient_operator = _operator_from_degeneracies(total_degree, common)
+    base_degree = total_degree - len(common)
+
+    representatives = []
+    previous = None
+    for position, value in enumerate(quotient_operator):
+        if value != previous:
+            representatives.append(position)
+            previous = value
+    base_label = tuple(sorted(
+        (
+            SimplexReference(
+                component.degree,
+                component.cell,
+                tuple(
+                    component.operator[position]
+                    for position in representatives
+                ),
+            )
+            for component in components
+        ),
+        key=lambda reference: (
+            reference.degree,
+            reference.cell,
+            reference.operator,
+        ),
+    ))
     return SimplexReference(
         base_degree,
         label_indices[base_degree][base_label],

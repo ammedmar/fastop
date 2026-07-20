@@ -159,16 +159,65 @@ def minimal_simplicial_sphere(dimension: int) -> SimplicialSet:
 
 def minimal_simplicial_torus() -> SimplicialSet:
     """Return a one-vertex, six-cell simplicial-set model of the torus."""
+    return minimal_simplicial_surface(1)
+
+
+def minimal_simplicial_surface(genus: int) -> SimplicialSet:
+    """Return a compact one-vertex model of an orientable closed surface.
+
+    For positive genus, the standard ``4 * genus``-gon presentation is
+    triangulated by a fan before its boundary edges are paired.  The result
+    has ``6 * genus - 3`` edges and ``4 * genus - 2`` triangles.
+    """
+    if not isinstance(genus, int) or isinstance(genus, bool):
+        raise TypeError("genus must be an integer")
+    if genus < 0:
+        raise ValueError("genus must be nonnegative")
+    if genus == 0:
+        return minimal_simplicial_sphere(2)
+
+    boundary_word = []
+    for handle in range(genus):
+        a = 2 * handle
+        b = a + 1
+        boundary_word.extend(((a, 1), (b, 1), (a, -1), (b, -1)))
+
+    polygon_size = len(boundary_word)
+    first_diagonal = 2 * genus
+
+    def diagonal(index: int) -> int:
+        if index == 1:
+            return boundary_word[0][0]
+        if index == polygon_size - 1:
+            return boundary_word[-1][0]
+        return first_diagonal + index - 2
+
+    triangles = []
+    for index in range(1, polygon_size - 1):
+        boundary_edge, orientation = boundary_word[index]
+        left = diagonal(index)
+        right = diagonal(index + 1)
+        if orientation == 1:
+            triangles.append((boundary_edge, right, left))
+        else:
+            triangles.append((boundary_edge, left, right))
+
+    edge_count = 6 * genus - 3
     return SimplicialSet.from_delta_complex(DeltaComplex([
         [()],
-        [(0, 0), (0, 0), (0, 0)],
-        [(2, 1, 0), (0, 1, 2)],
+        [(0, 0) for _ in range(edge_count)],
+        triangles,
     ]))
 
 
 def symmetric_product_of_torus(power: int) -> SimplicialSet:
     """Return the ``power``-fold symmetric product of the two-torus."""
-    return minimal_simplicial_torus().symmetric_power(power)
+    return symmetric_product_of_surface(1, power)
+
+
+def symmetric_product_of_surface(genus: int, power: int = 3) -> SimplicialSet:
+    """Return a symmetric power of the closed orientable genus-``genus`` surface."""
+    return minimal_simplicial_surface(genus).symmetric_power(power)
 
 
 def moore_space(order: int = 3) -> SimplicialComplex:
