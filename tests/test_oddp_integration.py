@@ -48,7 +48,7 @@ def test_source_mod_3_operation_on_cp3_generator():
     x = cohomology.basis(2)[0]
 
     assert cohomology.betti_numbers() == {0: 1, 2: 1, 4: 1, 6: 1}
-    assert x.operation(1, algorithm="source_mod_3") == cohomology.basis(6)[0]
+    assert x.operation(1, algorithm="source_mod_3") == x**3
     assert cohomology.operation_rank(2, 1, algorithm="source_mod_3") == 1
 
 

@@ -147,7 +147,7 @@ def test_top_reduced_power_does_not_require_oddp(monkeypatch):
     fake_oddp = types.ModuleType("oddp")
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
-    assert x.operation(1) == cohomology.basis(6)[0]
+    assert x.operation(1) == x**3
 
 
 def test_odd_primary_default_auto_matches_all_targets():

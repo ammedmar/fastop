@@ -141,6 +141,16 @@ class PrimeFieldCohomology:
         """Return the zero cohomology element."""
         return self.element({})
 
+    def one(self) -> "PrimeFieldCohomologyElement":
+        """Return the multiplicative unit in unreduced cohomology."""
+        if self.reduced:
+            raise ValueError("reduced cohomology has no multiplicative unit")
+        self._ensure_faces(0)
+        return self.project_cocycle(
+            0,
+            {index: 1 for index in range(len(self._faces[0]))},
+        )
+
     def element(self, coordinates: dict[int, Vector]) -> "PrimeFieldCohomologyElement":
         """Create a cohomology element from degree-index coordinates."""
         clean = {}
@@ -181,6 +191,80 @@ class PrimeFieldCohomology:
                 raise ValueError("cannot project a nonzero vector outside the complex")
             return self.zero()
         return self.element({degree: data.projector.coordinates(vector)})
+
+    def cup_product(
+        self,
+        left: "PrimeFieldCohomologyElement",
+        right: "PrimeFieldCohomologyElement",
+    ) -> "PrimeFieldCohomologyElement":
+        """Return the Alexander--Whitney cup product ``left * right``."""
+        if left.parent is not self or right.parent is not self:
+            raise ValueError("cup-product factors must belong to this cohomology object")
+        answer = self.zero()
+        for left_degree in sorted(left._coordinates):
+            for right_degree in sorted(right._coordinates):
+                answer += self._cup_product_homogeneous(
+                    left,
+                    left_degree,
+                    right,
+                    right_degree,
+                )
+        return answer
+
+    def cup_product_matrix(self, left_degree: int, right_degree: int) -> list[Vector]:
+        """Return cup-product columns for lexicographically ordered basis pairs.
+
+        The column for ``(i, j)`` records the product of basis class ``i`` in
+        ``left_degree`` with basis class ``j`` in ``right_degree``.
+        """
+        target_degree = left_degree + right_degree
+        return [
+            (
+                left * right
+            )._coordinates.get(target_degree, {})
+            for left in self.basis(left_degree)
+            for right in self.basis(right_degree)
+        ]
+
+    def _cup_product_homogeneous(
+        self,
+        left: "PrimeFieldCohomologyElement",
+        left_degree: int,
+        right: "PrimeFieldCohomologyElement",
+        right_degree: int,
+    ) -> "PrimeFieldCohomologyElement":
+        target_degree = left_degree + right_degree
+        target_data = self._degree_data.get(target_degree)
+        if target_data is None:
+            return self.zero()
+
+        left_cochain = self.cocycle(left, left_degree)
+        right_cochain = self.cocycle(right, right_degree)
+        front_positions = tuple(range(left_degree + 1))
+        back_positions = tuple(range(left_degree, target_degree + 1))
+        product_vector = {}
+        for target_index, target in enumerate(target_data.faces):
+            front = self.complex.restrict(
+                target_degree,
+                target,
+                front_positions,
+            )
+            if front is None:
+                continue
+            back = self.complex.restrict(
+                target_degree,
+                target,
+                back_positions,
+            )
+            if back is None:
+                continue
+            coefficient = (
+                left_cochain.get(front, 0)
+                * right_cochain.get(back, 0)
+            ) % self.p
+            if coefficient:
+                product_vector[target_index] = coefficient
+        return self.project_cocycle(target_degree, product_vector)
 
     def square(self, element: "PrimeFieldCohomologyElement", k: int) -> "PrimeFieldCohomologyElement":
         """Apply the Steenrod square ``Sq^k``.
@@ -430,6 +514,8 @@ class PrimeFieldCohomology:
             target_face_to_index=target_data.face_to_index,
             algorithm=algorithm,
         )
+        if operation_degree % 2:
+            target_vector = vector_scale(target_vector, -1, self.p)
         return self.project_cocycle(target_degree, target_vector)
 
     def _boundary_columns_for_degree(self, degree: int) -> list[Vector]:
@@ -558,6 +644,13 @@ class PrimeFieldCohomologyElement:
             formula_source=formula_source,
         )
 
+    def cup(
+        self,
+        other: "PrimeFieldCohomologyElement",
+    ) -> "PrimeFieldCohomologyElement":
+        """Return the cup product with ``other``."""
+        return self.parent.cup_product(self, other)
+
     def cocycle(self, degree: int | None = None):
         """Return the chosen representative cocycle of a homogeneous element."""
         if degree is None:
@@ -595,10 +688,36 @@ class PrimeFieldCohomologyElement:
         return self.parent.element(coordinates)
 
     def __rmul__(self, scalar: int) -> "PrimeFieldCohomologyElement":
+        if not isinstance(scalar, int) or isinstance(scalar, bool):
+            return NotImplemented
         return self.parent.element({
             degree: vector_scale(vector, scalar, self.p)
             for degree, vector in self._coordinates.items()
         })
+
+    def __mul__(self, other):
+        if isinstance(other, int) and not isinstance(other, bool):
+            return other * self
+        if isinstance(other, PrimeFieldCohomologyElement):
+            if self.parent is not other.parent:
+                return NotImplemented
+            return self.parent.cup_product(self, other)
+        return NotImplemented
+
+    def __pow__(self, exponent: int) -> "PrimeFieldCohomologyElement":
+        if not isinstance(exponent, int) or isinstance(exponent, bool):
+            raise TypeError("cohomology-class exponent must be an integer")
+        if exponent < 0:
+            raise ValueError("cohomology-class exponent must be nonnegative")
+        answer = self.parent.one()
+        factor = self
+        while exponent:
+            if exponent & 1:
+                answer = answer * factor
+            exponent >>= 1
+            if exponent:
+                factor = factor * factor
+        return answer
 
     def __eq__(self, other) -> bool:
         return (
