@@ -14,7 +14,7 @@ from fastop._cochain_evaluation import (
     evaluate_source_mod_3,
     evaluate_target_omissions,
 )
-from fastop._oddp_bridge import (
+from tests._oddp_oracle import (
     cochain_operation_vector_oddp,
 )
 from fastop._universal import (
@@ -37,19 +37,9 @@ def _universal_kwargs(p, r, source_degree, bockstein=False):
     }
 
 
-def _bridge_kwargs(p, r, source_degree, bockstein=False):
-    return {
-        **_universal_kwargs(p, r, source_degree, bockstein),
-        "oddp_s": -r,
-        "oddp_q": -source_degree,
-    }
-
-
-def test_cohomology_convention_converts_fastop_to_oddp_conventions():
+def test_cohomology_uses_public_odd_primary_degree_conventions():
     cohomology = spaces.sphere(2).cohomology(p=5)
 
-    assert cohomology._oddp_operation_index(2) == -2
-    assert cohomology._oddp_source_degree(3) == -3
     assert cohomology._odd_primary_missing_vertices(2, bockstein=True) == 17
     assert cohomology._operation_target_degree(3, 2, bockstein=True) == 20
 
@@ -143,22 +133,11 @@ def test_reference_oddp_cochain_bridge_returns_fastop_sparse_vector(monkeypatch)
     assert (p, s, q, bockstein, algorithm) == (3, -1, 0, False, "direct")
 
 
-def test_reference_bridge_uses_universal_data_and_native_evaluator(monkeypatch):
+def test_computed_formula_uses_universal_data_and_native_evaluator():
     complex_ = spaces.complex_projective_plane()
     target_faces = sorted(complex_.faces(2))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     target = target_faces[0]
-    calls = []
-
-    class FakeSteenrod:
-        @staticmethod
-        def chain_operations(p, s, q, *, bockstein):
-            calls.append((p, s, q, bockstein))
-            return {((0, 2), (0, 1), (1, 2)): 2}
-
-    fake_oddp = types.ModuleType("oddp")
-    fake_oddp.Steenrod = FakeSteenrod
-    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
     vector = cochain_operation_vector(
         complex_,
@@ -167,14 +146,13 @@ def test_reference_bridge_uses_universal_data_and_native_evaluator(monkeypatch):
             (target[0], target[1]): 1,
             (target[1], target[2]): 1,
         },
-        **_bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True),
+        **_universal_kwargs(p=3, r=0, source_degree=1, bockstein=True),
         target_face_to_index=target_face_to_index,
         algorithm="source_focused",
         formula_source="computed",
     )
 
     assert vector == {target_face_to_index[target]: 2}
-    assert calls == [(3, 0, -1, True)]
 
 
 def test_universal_operation_reduces_coefficients():
@@ -229,27 +207,14 @@ def test_signature_table_validates_homogeneous_tensor_factors():
         universal.signature_table()
 
 
-def test_reference_bridge_builds_universal_operation(monkeypatch):
-    calls = []
-
-    class FakeSteenrod:
-        @staticmethod
-        def chain_operations(p, s, q, *, bockstein):
-            calls.append((p, s, q, bockstein))
-            return {((0, 1), (1, 2), (0, 2)): 4}
-
-    fake_oddp = types.ModuleType("oddp")
-    fake_oddp.Steenrod = FakeSteenrod
-    monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
-
+def test_computed_source_builds_native_universal_operation():
     universal = universal_operation(
-        **_bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True),
+        **_universal_kwargs(p=3, r=0, source_degree=1, bockstein=True),
         formula_source="computed",
     )
 
-    assert calls == [(3, 0, -1, True)]
     assert universal.target_degree == 2
-    assert universal.terms == {((0, 1), (1, 2), (0, 2)): 1}
+    assert universal.terms == {((0, 2), (0, 1), (1, 2)): 2}
 
 
 def test_universal_operation_uses_low_dimensional_catalog_by_default(monkeypatch):
@@ -263,21 +228,21 @@ def test_universal_operation_uses_low_dimensional_catalog_by_default(monkeypatch
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
     universal = universal_operation(
-        **_bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True)
+        **_universal_kwargs(p=3, r=0, source_degree=1, bockstein=True)
     )
 
     assert universal.terms == {((0, 2), (0, 1), (1, 2)): 2}
 
 
 def test_universal_operation_can_require_or_skip_catalog():
-    operation = _bridge_kwargs(p=3, r=0, source_degree=1, bockstein=True)
+    operation = _universal_kwargs(p=3, r=0, source_degree=1, bockstein=True)
 
     assert universal_operation(**operation, formula_source="catalog").terms == {
         ((0, 2), (0, 1), (1, 2)): 2
     }
     with pytest.raises(NotImplementedError, match="catalog"):
         universal_operation(
-            **_bridge_kwargs(p=3, r=1, source_degree=5),
+            **_universal_kwargs(p=3, r=1, source_degree=5),
             formula_source="catalog",
         )
 
@@ -298,13 +263,15 @@ def test_native_universal_operation_builds_top_reduced_power_family():
     }
 
 
-def test_native_universal_operation_leaves_unimplemented_families_to_reference():
+def test_native_universal_operation_builds_bockstein_and_non_top_families():
     assert native_universal_operation(
         **_universal_kwargs(p=3, r=0, source_degree=1, bockstein=True)
-    ) is None
-    assert native_universal_operation(
+    ).terms == {((0, 2), (0, 1), (1, 2)): 2}
+    non_top = native_universal_operation(
         **_universal_kwargs(p=3, r=1, source_degree=3)
-    ) is None
+    )
+
+    assert len(non_top.terms) == 19
 
 
 def test_all_targets_evaluator_applies_tensor_terms():

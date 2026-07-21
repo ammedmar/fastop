@@ -21,9 +21,11 @@ assert u.operation(2) == CP2.basis(4)[0]
 ```
 
 Odd-primary operations are exposed on the same cohomology classes. Universal
-formulas are served from the built-in catalog when available, with the
-neighboring `oddp` package used as a development fallback for formulas not
-yet cataloged. The resulting cocycle is projected back to cohomology.
+formulas are served from the built-in catalog when available and otherwise
+computed by the package's native formula engine. The installed package is
+self-contained; the neighboring `oddp` project is used only as a development
+oracle in optional parity tests. The resulting cocycle is projected back to
+cohomology.
 
 ```python
 H = spaces.complex_projective_space(3).cohomology(p=3)

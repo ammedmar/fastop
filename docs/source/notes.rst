@@ -12,3 +12,6 @@ records; the generated Sphinx site is the package-facing documentation.
 * ``../roadmap.md`` records completed milestones and release work.
 * ``../package-api.md`` gives a compact Markdown version of this guide for
   readers browsing the source tree.
+* ``../odd-primary-internalization.md`` records the completed absorption of
+  the odd-primary universal formula builder. Adapted code is attributed in
+  the repository's ``THIRD_PARTY_NOTICES.md``.

@@ -1,10 +1,10 @@
-# Odd-primary Steenrod operation internalization plan
+# Odd-primary Steenrod operation internalization
 
-This memo records how to internalize the useful parts of `oddp` into `fastop`.
-It is not an implementation plan that preserves `oddp`'s module structure.
-The goal is to keep the mathematics and tests, while replacing the current
-verbose object model with smaller kernels that match `fastop`'s cohomology
-classes and sparse vectors.
+This memo records how the useful formula-building path from `oddp` was
+internalized into `fastop`. The work is complete: installed `fastop` does not
+import `oddp` at runtime. It keeps the mathematics and oracle comparisons while
+replacing the resolution object hierarchy with tuple/dictionary kernels that
+match `fastop`'s cohomology classes and sparse vectors.
 
 ## Terminology
 
@@ -103,7 +103,7 @@ Pieces to avoid copying directly:
 `fastop` already has sparse vectors over `F_p`; native code should use plain
 dicts with explicit modular arithmetic.
 
-## Proposed internal shape
+## Implemented internal shape
 
 A native implementation should live behind the existing `operation(...)` API.
 The likely private modules are:
@@ -111,9 +111,11 @@ The likely private modules are:
 ```text
 fastop/
   _universal.py
+  _odd_primary_formula.py
   _cochain_evaluation.py
   _linear_algebra.py
-  _oddp_bridge.py
+tests/
+  _oddp_oracle.py
 ```
 
 The cohomology object should own convention conversion. It has a
@@ -124,13 +126,10 @@ complex.cohomology(p=3, convention=1)   # cohomological, default
 complex.cohomology(p=3, convention=-1)  # homological index signs
 ```
 
-For the current oddp bridge, the cohomology object converts from the public
-operation index to the oddp convention:
+The production path uses the public `fastop` convention directly:
 
 ```python
 operation_degree = convention * r
-oddp_s = -operation_degree
-oddp_q = -source_degree
 target_degree = source_degree + 2*operation_degree*(p - 1) + int(bockstein)
 missing_vertices_per_factor = 2*operation_degree*(p - 1) + int(bockstein)
 ```
@@ -166,8 +165,8 @@ universal_operation
 and returns a sparse cochain in the target degree. It should not know about
 cohomology projection.
 
-`_oddp_bridge.py` can temporarily wrap `oddp` for comparison tests while native
-kernels are being written.
+`tests/_oddp_oracle.py` wraps `oddp` only for optional comparison tests.
+Production modules contain no `oddp` adapter and never import it.
 
 ## Evaluation strategies
 
@@ -208,8 +207,8 @@ after the prime.
 
 ## Test oracle
 
-Until native kernels replace the bridge, `oddp` should remain the oracle. The
-initial native tests should compare:
+`oddp` remains a valuable independent oracle. Optional integration tests
+compare:
 
 - raw cochains from native all-target evaluation against `oddp` direct output;
 - raw cochains from native sparse evaluation against `oddp` support output;
@@ -220,30 +219,21 @@ Regression spaces:
 - CP2 over `F_3`: `P^1` on the degree-2 class is zero by dimension.
 - CP3 over `F_3`: `P^1: H^2 -> H^6` has rank 1.
 - Moore space over `F_3`: Bockstein `P^0: H^1 -> H^2` has rank 1.
-- A future `p = 5` example before claiming confidence beyond p=3.
+- the symmetric-product and lens-space examples at `p = 5`.
 
-## Suggested next implementation slice
+## Completed implementation slices
 
-Do not port all of `oddp`.
+The implementation intentionally did not port all of `oddp`.
 
-First native slice:
+Completed slices:
 
-1. Add `_oddp_bridge.py` as the current `oddp` bridge.
-2. Move the existing cohomology-level bridge out of `cohomology.py` into that
-   bridge module.
-3. Keep behavior unchanged.
+1. Isolate the `oddp` bridge as a test-only oracle.
+2. Implement and validate cataloged formulas and the top reduced-power family.
+3. Implement all-target, omission-table, and source-focused evaluators.
+4. Absorb the general `phi_dual -> psi_dual -> abc_dual -> alex` formula path
+   as private tuple/dictionary routines.
+5. Compare cataloged and uncataloged formulas term-by-term at primes 3 and 5.
+6. Retain the optional C extension for the stable evaluation kernels.
 
-Second native slice:
-
-1. Implement universal signature extraction for a very small range of cases.
-2. Compare it against `oddp`'s universal tensor chains.
-3. Use CP3 and Moore only as end-to-end tests.
-
-Third native slice:
-
-1. Implement all-target evaluation.
-2. Compare raw output with `oddp` direct output.
-3. Then implement `source_focused` and compare raw output with the
-   `all_targets` evaluator.
-
-Only after these slices should we consider C++ kernels.
+The adapted formula code carries the upstream MIT notice in
+`THIRD_PARTY_NOTICES.md`.

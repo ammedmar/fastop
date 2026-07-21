@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from fastop._odd_primary_formula import computed_universal_terms
 from fastop._precomputed_universal import precomputed_terms
 
 TensorTerm = tuple[tuple[int, ...], ...]
@@ -108,20 +109,23 @@ def native_universal_operation(
     bockstein: bool,
     target_degree: int,
     missing_vertices_per_factor: int,
-) -> UniversalOperation | None:
-    """Return native universal data when the operation family is implemented."""
-    if bockstein:
-        return None
-    if r <= 0 or source_degree != 2 * r:
-        return None
-
-    factor_length = source_degree + 1
-    step = source_degree
-    tensor = tuple(
-        tuple(range(step * factor, step * factor + factor_length))
-        for factor in range(p)
-    )
-    coefficient = (-1) ** r
+) -> UniversalOperation:
+    """Compute universal data with fastop's native odd-primary builder."""
+    if not bockstein and r > 0 and source_degree == 2 * r:
+        factor_length = source_degree + 1
+        step = source_degree
+        tensor = tuple(
+            tuple(range(step * factor, step * factor + factor_length))
+            for factor in range(p)
+        )
+        terms = {tensor: (-1) ** r}
+    else:
+        terms = computed_universal_terms(
+            p=p,
+            r=r,
+            source_degree=source_degree,
+            bockstein=bockstein,
+        )
     return UniversalOperation.from_terms(
         p=p,
         r=r,
@@ -129,7 +133,7 @@ def native_universal_operation(
         bockstein=bockstein,
         target_degree=target_degree,
         missing_vertices_per_factor=missing_vertices_per_factor,
-        terms={tensor: coefficient},
+        terms=terms,
     )
 
 
@@ -141,11 +145,9 @@ def universal_operation(
     bockstein: bool,
     target_degree: int,
     missing_vertices_per_factor: int,
-    oddp_s: int | None = None,
-    oddp_q: int | None = None,
     formula_source: str = "auto",
 ) -> UniversalOperation:
-    """Build universal tensor data, falling back to oddp when needed."""
+    """Build universal tensor data from the catalog or native formula engine."""
     if formula_source not in {"auto", "catalog", "computed"}:
         raise ValueError("formula_source must be 'auto', 'catalog', or 'computed'")
     if formula_source in {"auto", "catalog"}:
@@ -176,52 +178,7 @@ def universal_operation(
         target_degree=target_degree,
         missing_vertices_per_factor=missing_vertices_per_factor,
     )
-    if native is not None:
-        return native
-
-    if oddp_s is None or oddp_q is None:
-        raise NotImplementedError("this universal operation is not implemented natively")
-
-    return oddp_universal_operation(
-        p=p,
-        r=r,
-        source_degree=source_degree,
-        bockstein=bockstein,
-        target_degree=target_degree,
-        missing_vertices_per_factor=missing_vertices_per_factor,
-        oddp_s=oddp_s,
-        oddp_q=oddp_q,
-    )
-
-
-def oddp_universal_operation(
-    *,
-    p: int,
-    r: int,
-    source_degree: int,
-    bockstein: bool,
-    target_degree: int,
-    missing_vertices_per_factor: int,
-    oddp_s: int,
-    oddp_q: int,
-) -> UniversalOperation:
-    """Build universal tensor data using oddp as an explicit oracle."""
-    from fastop._oddp_bridge import universal_terms_oddp
-
-    return UniversalOperation.from_terms(
-        p=p,
-        r=r,
-        source_degree=source_degree,
-        bockstein=bockstein,
-        target_degree=target_degree,
-        missing_vertices_per_factor=missing_vertices_per_factor,
-        terms=universal_terms_oddp(
-            p=p,
-            bockstein=bockstein,
-            oddp_s=oddp_s,
-            oddp_q=oddp_q,
-        ),
-    )
+    return native
 
 
 def _omitted_positions(

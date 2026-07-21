@@ -354,12 +354,6 @@ class PrimeFieldCohomology:
             return not bockstein and operation_degree <= degree
         return 2 * operation_degree + int(bockstein) <= degree
 
-    def _oddp_operation_index(self, r: int) -> int:
-        return -r
-
-    def _oddp_source_degree(self, degree: int) -> int:
-        return -degree
-
     def _universal_operation(
         self,
         *,
@@ -387,8 +381,6 @@ class PrimeFieldCohomology:
                 bockstein=bockstein,
                 target_degree=target_degree,
                 missing_vertices_per_factor=missing_vertices_per_factor,
-                oddp_s=self._oddp_operation_index(operation_degree),
-                oddp_q=self._oddp_source_degree(source_degree),
                 formula_source=formula_source,
             )
             self._universal_operations[key] = cached

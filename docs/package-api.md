@@ -93,10 +93,11 @@ At `p=2`, `operation(k)` computes the Steenrod square `Sq^k`. At an odd prime,
 `operation(r, bockstein=True)` computes `beta P^r`. Instability and a missing
 source or target cohomology group are detected before cochain evaluation.
 
-The installed package is self-contained for its cataloged formulas and for
-the native top reduced-power formula used by the prime-five examples. More
-general uncataloged odd-primary formulas can use the sibling `oddp` project as
-a development fallback; this is not an installation dependency of `fastop`.
+The installed package is self-contained. It uses cached formulas for a few
+frequent low-dimensional cases and computes general odd-primary universal
+formulas with its native builder. The sibling `oddp` project is retained only
+as a development oracle for optional parity tests; it is not an installation
+dependency of `fastop`.
 
 The optional C extension accelerates sparse linear algebra and cochain
 evaluation. If it is unavailable, the same public API uses pure Python.

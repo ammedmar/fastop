@@ -125,19 +125,11 @@ def test_bockstein_operations_are_only_available_at_odd_primes():
         cohomology.operation_rank(2, 1, bockstein=True)
 
 
-def test_odd_primary_operation_uses_universal_data_and_projects(monkeypatch):
+def test_odd_primary_computed_formula_is_self_contained(monkeypatch):
     cohomology = spaces.moore_space(3).cohomology(p=3)
     x = cohomology.basis(1)[0]
-    calls = []
-
-    class FakeSteenrod:
-        @staticmethod
-        def chain_operations(p, s, q, *, bockstein):
-            calls.append((p, s, q, bockstein))
-            return {((0, 2), (0, 1), (1, 2)): 2}
 
     fake_oddp = types.ModuleType("oddp")
-    fake_oddp.Steenrod = FakeSteenrod
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
     assert x.operation(
@@ -146,7 +138,6 @@ def test_odd_primary_operation_uses_universal_data_and_projects(monkeypatch):
         algorithm="direct",
         formula_source="computed",
     ) == cohomology.basis(2)[0]
-    assert calls[0] == (3, 0, -1, True)
     assert cohomology.operation_rank(1, 0, bockstein=True, algorithm="direct") == 1
 
 
@@ -166,28 +157,17 @@ def test_odd_primary_default_auto_matches_all_targets():
     assert x.operation(1) == x.operation(1, algorithm="all_targets")
 
 
-def test_odd_primary_operation_uses_oddp_universal_conventions(monkeypatch):
-    cohomology = spaces.moore_space(3).cohomology(p=3)
-    x = cohomology.basis(1)[0]
-    calls = []
-
-    class FakeSteenrod:
-        @staticmethod
-        def chain_operations(p, s, q, *, bockstein):
-            calls.append((p, s, q, bockstein))
-            return {}
-
+def test_odd_primary_computed_non_top_formula_does_not_import_oddp(monkeypatch):
+    cohomology = spaces.complex_projective_space(3).suspension(2).cohomology(p=3)
     fake_oddp = types.ModuleType("oddp")
-    fake_oddp.Steenrod = FakeSteenrod
     monkeypatch.setitem(sys.modules, "oddp", fake_oddp)
 
-    assert x.operation(
-        0,
-        bockstein=True,
-        algorithm="source_focused",
+    assert cohomology.operation_rank(
+        4,
+        1,
+        algorithm="all_targets",
         formula_source="computed",
-    ).is_zero()
-    assert calls == [(3, 0, -1, True)]
+    ) == 1
 
 
 def test_odd_primary_vanishing_target_degree_does_not_require_oddp(monkeypatch):

@@ -30,7 +30,9 @@ tests the entire map from ``H^degree``. ``operation_matrix`` returns its
 columns in the selected basis. At odd primes, set ``bockstein=True`` for
 ``beta P^r``; at the prime two, the same interface computes ``Sq^r``.
 
-The installed package contains its cataloged universal formulas and the native
-top reduced-power formula used in the prime-five examples. The sibling
-``oddp`` project remains a development fallback for uncataloged formulas; it
-is not a runtime dependency.
+The installed package contains both a small cache of cataloged universal
+formulas and a native builder for general formulas. Passing
+``formula_source="catalog"`` requires a cached formula, while
+``formula_source="computed"`` bypasses the cache and exercises the native
+builder. The sibling ``oddp`` project is only a development-time oracle in
+optional parity tests; it is not a runtime dependency.

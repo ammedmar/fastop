@@ -1,5 +1,11 @@
 # Odd-primary algorithmic simplification proposal
 
+> **Implementation status (July 2026).** The tuple/dictionary universal
+> builder described here is now implemented in
+> `src/fastop/_odd_primary_formula.py`. `oddp` is test-only, and the catalog is
+> a cache rather than a coverage boundary. The remaining phases below are kept
+> as the design record that led to the implementation.
+
 This note studies the current `oddp` implementation as an algorithm rather
 than as a transcription of the proof. The goal is to identify the smaller
 combinatorial kernel that `fastop` should eventually own.
@@ -403,9 +409,9 @@ Useful heuristic inputs:
 
 This phase is purely computational. It should not change mathematical output.
 
-### Phase 3: native universal families
+### Phase 3: native universal families (completed)
 
-Replace `oddp.chain_operations` one family at a time.
+The general native builder now replaces `oddp.chain_operations` in production.
 
 Suggested order:
 
@@ -418,11 +424,9 @@ Suggested order:
 Each family should be accepted only after comparing universal data and
 cohomology operations against the oracle.
 
-### Phase 4: remove runtime dependency
+### Phase 4: remove runtime dependency (completed)
 
-When every operation family used by the tests is native, `oddp` should become
-test-only. After the general signature construction lands, the package should
-not import `oddp` at runtime.
+`oddp` is now test-only. The package does not import it at runtime.
 
 At that point we can decide whether to keep `oddp` as a development oracle in
 optional tests.
