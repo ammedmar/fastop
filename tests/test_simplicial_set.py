@@ -145,6 +145,38 @@ def test_symmetric_power_materializes_only_requested_degrees():
 
 
 @pytest.mark.parametrize(
+    ("crosscaps", "f_vector"),
+    [(1, (1, 1, 1)), (2, (1, 3, 2)), (3, (1, 6, 4))],
+)
+def test_minimal_nonorientable_surfaces(crosscaps, f_vector):
+    surface = spaces.nonorientable_surface(crosscaps)
+
+    assert surface.f_vector() == f_vector
+    assert surface.cohomology(p=2).betti_numbers() == {
+        0: 1,
+        1: crosscaps,
+        2: 1,
+    }
+    expected_odd = {0: 1}
+    if crosscaps > 1:
+        expected_odd[1] = crosscaps - 1
+    assert surface.cohomology(p=3).betti_numbers() == expected_odd
+
+
+def test_symmetric_cube_of_projective_plane_is_rp6():
+    model = spaces.symmetric_product_of_nonorientable_surface(1, power=3)
+    mod_two = model.cohomology(p=2)
+    mod_three = model.cohomology(p=3)
+
+    assert model.f_vector() == (1, 3, 13, 35, 55, 45, 15)
+    assert mod_two.betti_numbers() == {degree: 1 for degree in range(7)}
+    assert mod_two.operation_rank(1, 1) == 1
+    assert mod_two.operation_rank(2, 2) == 1
+    assert mod_three.betti_numbers() == {0: 1}
+    assert mod_three.operation_rank(2, 1) == 0
+
+
+@pytest.mark.parametrize(
     ("genus", "f_vector", "betti"),
     [
         (0, (1, 0, 1), {0: 1, 2: 1}),

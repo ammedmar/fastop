@@ -7,7 +7,11 @@ from itertools import combinations, product
 from fastop.delta_complex import DeltaComplex
 from fastop.group_action import FiniteGroupAction
 from fastop.simplicial import SimplicialComplex
-from fastop.simplicial_set import SimplicialSet, SymmetricPowerSimplicialSet
+from fastop.simplicial_set import (
+    SimplexReference,
+    SimplicialSet,
+    SymmetricPowerSimplicialSet,
+)
 
 
 def simplex(dimension: int) -> SimplicialComplex:
@@ -182,9 +186,63 @@ def minimal_simplicial_surface(genus: int) -> SimplicialSet:
     ]))
 
 
+def minimal_simplicial_nonorientable_surface(crosscaps: int) -> SimplicialSet:
+    r"""Return a compact model of a closed non-orientable surface.
+
+    The surface is the connected sum of ``crosscaps`` copies of
+    :math:`\mathbb{R}P^2`.  Its polygon word is
+    :math:`a_1a_1\cdots a_ha_h`.  The projective plane uses its minimal
+    one-vertex, one-edge, one-triangle simplicial-set model; larger words are
+    triangulated by a fan.
+    """
+    if not isinstance(crosscaps, int) or isinstance(crosscaps, bool):
+        raise TypeError("crosscaps must be an integer")
+    if crosscaps < 1:
+        raise ValueError("crosscaps must be positive")
+    if crosscaps == 1:
+        degenerate_edge = SimplexReference(0, 0, (0, 0))
+        return SimplicialSet.from_face_maps([
+            [()],
+            [(0, 0)],
+            [(0, degenerate_edge, 0)],
+        ])
+
+    boundary_word = [
+        (edge, 1)
+        for edge in range(crosscaps)
+        for _ in range(2)
+    ]
+    polygon_size = len(boundary_word)
+    first_diagonal = crosscaps
+
+    def diagonal(index: int) -> int:
+        if index == 1:
+            return boundary_word[0][0]
+        if index == polygon_size - 1:
+            return boundary_word[-1][0]
+        return first_diagonal + index - 2
+
+    triangles = []
+    for index in range(1, polygon_size - 1):
+        boundary_edge, _ = boundary_word[index]
+        triangles.append((boundary_edge, diagonal(index + 1), diagonal(index)))
+
+    edge_count = 3 * crosscaps - 3
+    return SimplicialSet.from_delta_complex(DeltaComplex([
+        [()],
+        [(0, 0) for _ in range(edge_count)],
+        triangles,
+    ]))
+
+
 def orientable_surface(genus: int) -> SimplicialSet:
     """Return a compact simplicial-set model of the genus-``genus`` surface."""
     return minimal_simplicial_surface(genus)
+
+
+def nonorientable_surface(crosscaps: int) -> SimplicialSet:
+    """Return the closed surface with the requested number of crosscaps."""
+    return minimal_simplicial_nonorientable_surface(crosscaps)
 
 
 def symmetric_product_of_torus(
@@ -200,6 +258,14 @@ def symmetric_product_of_surface(
 ) -> SimplicialSet | SymmetricPowerSimplicialSet:
     """Return a symmetric power of the closed orientable genus-``genus`` surface."""
     return minimal_simplicial_surface(genus).symmetric_power(power)
+
+
+def symmetric_product_of_nonorientable_surface(
+    crosscaps: int,
+    power: int = 2,
+) -> SimplicialSet | SymmetricPowerSimplicialSet:
+    """Return a symmetric power of a closed non-orientable surface."""
+    return minimal_simplicial_nonorientable_surface(crosscaps).symmetric_power(power)
 
 
 def moore_space(order: int = 3) -> SimplicialComplex:

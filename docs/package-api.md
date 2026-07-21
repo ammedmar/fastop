@@ -21,12 +21,22 @@ from fastop import spaces
 surface = spaces.orientable_surface(genus=2)
 symmetry_quotient = spaces.symmetric_product_of_surface(genus=2, power=3)
 lens = spaces.lens_space(dimension=11, order=5)
+projective_plane = spaces.nonorientable_surface(crosscaps=1)
+sym3_projective_plane = spaces.symmetric_product_of_nonorientable_surface(
+    crosscaps=1,
+    power=3,
+)
 ```
 
 `symmetric_product_of_surface` uses a compact model of the closed orientable
 surface of the requested genus. `minimal_simplicial_surface` exposes that
 base model directly. Before constructing a large symmetric
 power, use `surface.symmetric_power_f_vector(power)` to inspect its cell count.
+
+`nonorientable_surface(crosscaps)` uses the polygon presentation
+`a1 a1 ... ah ah`; one crosscap is the minimal simplicial-set model of
+`RP2`, and two crosscaps give the Klein bottle. Its symmetric-product
+constructor uses the same degree-lazy representation as the oriented family.
 
 The two example families deliberately remain separate. Symmetric products are
 formed as permutation quotients of products of a normalized simplicial-set
