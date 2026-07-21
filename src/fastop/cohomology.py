@@ -75,27 +75,29 @@ class PrimeFieldCohomology:
         self.reduced = reduced
         self.convention = convention
         self._faces = {}
-        for degree in range(complex_.dimension + 1):
-            cells = complex_.cells(degree)
-            self._faces[degree] = (
-                cells
-                if isinstance(cells, range) and cells == range(len(cells))
-                else tuple(sorted(cells))
-            )
-        self._face_to_index = {
-            degree: (
-                faces
-                if isinstance(faces, range)
-                else {face: index for index, face in enumerate(faces)}
-            )
-            for degree, faces in self._faces.items()
-        }
+        self._face_to_index = {}
         self._boundary_columns: dict[int, list[Vector]] = {}
         self._coboundary_columns: dict[int, list[Vector]] = {}
         self._image_basis_by_degree: dict[int, list[Vector]] = {}
         self._cycles_by_degree: dict[int, list[Vector]] = {}
         self._degree_data = _DegreeDataCache(self)
         self._universal_operations = {}
+
+    def _ensure_faces(self, degree: int) -> None:
+        if degree in self._faces or degree < 0 or degree > self.dimension:
+            return
+        cells = self.complex.cells(degree)
+        faces = (
+            cells
+            if isinstance(cells, range) and cells == range(len(cells))
+            else tuple(sorted(cells))
+        )
+        self._faces[degree] = faces
+        self._face_to_index[degree] = (
+            faces
+            if isinstance(faces, range)
+            else {face: index for index, face in enumerate(faces)}
+        )
 
     @property
     def dimension(self) -> int:
@@ -436,9 +438,11 @@ class PrimeFieldCohomology:
             return cached
         if degree < 0 or degree > self.dimension:
             return []
+        self._ensure_faces(degree)
         if degree == 0:
             columns = [{} for _ in self._faces.get(0, ())]
         else:
+            self._ensure_faces(degree - 1)
             lower_index = self._face_to_index[degree - 1]
             signs = tuple(((-1) ** index) % self.p for index in range(degree + 1))
             columns = []
@@ -464,6 +468,7 @@ class PrimeFieldCohomology:
             return cached
         if degree < 0 or degree > self.dimension:
             return []
+        self._ensure_faces(degree)
         columns = [{} for _ in self._faces.get(degree, ())]
         for target_index, boundary in enumerate(
             self._boundary_columns_for_degree(degree + 1)
@@ -495,6 +500,7 @@ class PrimeFieldCohomology:
     def _build_degree_data_for_degree(self, degree: int) -> _DegreeData | None:
         if degree < 0 or degree > self.dimension:
             return None
+        self._ensure_faces(degree)
         _, cycles = self._image_and_cycles(degree)
         if degree == 0:
             boundary_vectors = []

@@ -134,6 +134,16 @@ def test_symmetric_power_cell_counts_do_not_require_model_construction():
     ) == 414_092_094
 
 
+def test_symmetric_power_materializes_only_requested_degrees():
+    model = spaces.minimal_simplicial_sphere(2).symmetric_power(7)
+
+    assert model._labels == {}
+    assert sum(model.f_vector()) == 13_478_264
+    assert model._labels == {}
+    assert len(model.cells(2)) == 7
+    assert set(model._labels) == {2}
+
+
 @pytest.mark.parametrize(
     ("genus", "f_vector", "betti"),
     [

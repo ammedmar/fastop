@@ -8,6 +8,7 @@ as Markdown source files because they are useful as lightweight research
 records; the generated Sphinx site is the package-facing documentation.
 
 * ``../prime-five.md`` records the prime-five validation family.
+* ``../prime-seven.md`` records the degree-lazy prime-seven computation.
 * ``../symmetric-surfaces.md`` records the genus scaling program.
 * ``../roadmap.md`` records completed milestones and release work.
 * ``../package-api.md`` gives a compact Markdown version of this guide for
