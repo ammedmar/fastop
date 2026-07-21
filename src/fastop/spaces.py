@@ -202,18 +202,6 @@ def symmetric_product_of_surface(
     return minimal_simplicial_surface(genus).symmetric_power(power)
 
 
-def symmetric_product_of_curve(
-    genus: int,
-    power: int = 3,
-) -> SimplicialSet | SymmetricPowerSimplicialSet:
-    """Return the symmetric power of a smooth projective curve by genus.
-
-    The finite model depends only on the topology of the underlying closed
-    orientable surface; no choice of complex structure is required.
-    """
-    return symmetric_product_of_surface(genus, power)
-
-
 def moore_space(order: int = 3) -> SimplicialComplex:
     """Return a catalog triangulation of the mod-``order`` Moore space."""
     if not isinstance(order, int) or isinstance(order, bool):

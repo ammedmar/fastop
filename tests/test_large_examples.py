@@ -9,7 +9,7 @@ pytestmark = pytest.mark.large
 
 
 def test_fifth_symmetric_power_of_torus_at_prime_five():
-    model = spaces.symmetric_product_of_curve(genus=1, power=5)
+    model = spaces.symmetric_product_of_surface(genus=1, power=5)
     cohomology = model.cohomology(p=5)
 
     assert sum(model.f_vector()) == 1_797_894

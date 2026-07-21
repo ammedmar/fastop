@@ -19,14 +19,13 @@ Cohomology classes provide `operation`.
 from fastop import spaces
 
 surface = spaces.orientable_surface(genus=2)
-symmetry_quotient = spaces.symmetric_product_of_curve(genus=2, power=3)
+symmetry_quotient = spaces.symmetric_product_of_surface(genus=2, power=3)
 lens = spaces.lens_space(dimension=11, order=5)
 ```
 
-`symmetric_product_of_curve` uses the topology of the underlying closed
-orientable surface; it does not require a choice of complex structure.
-`minimal_simplicial_surface` and `symmetric_product_of_surface` remain
-available as compatibility names. Before constructing a large symmetric
+`symmetric_product_of_surface` uses a compact model of the closed orientable
+surface of the requested genus. `minimal_simplicial_surface` exposes that
+base model directly. Before constructing a large symmetric
 power, use `surface.symmetric_power_f_vector(power)` to inspect its cell count.
 
 The two example families deliberately remain separate. Symmetric products are

@@ -99,11 +99,11 @@ CP3 = spaces.minimal_simplicial_sphere(2).symmetric_power(3)
 assert CP3.f_vector() == (1, 0, 3, 10, 25, 30, 15)
 assert CP3.cohomology(p=3).operation_rank(2, 1) == 1
 
-X = spaces.symmetric_product_of_curve(genus=1, power=3)
+X = spaces.symmetric_product_of_surface(genus=1, power=3)
 assert X.f_vector() == (1, 19, 126, 380, 572, 420, 120)
 assert X.cohomology(p=3).operation_rank(2, 1) == 1
 
-genus_two = spaces.symmetric_product_of_curve(genus=2)
+genus_two = spaces.symmetric_product_of_surface(genus=2)
 assert sum(genus_two.f_vector()) == 41_478
 assert genus_two.cohomology(p=3).operation_rank(2, 1) == 1
 ```
@@ -113,10 +113,10 @@ The sphere is the projective-space ground truth, while the torus provides a
 1.8-million-cell positive-genus computation:
 
 ```python
-CP5 = spaces.symmetric_product_of_curve(genus=0, power=5)
+CP5 = spaces.symmetric_product_of_surface(genus=0, power=5)
 assert CP5.cohomology(p=5).operation_rank(2, 1) == 1
 
-torus_fifth = spaces.symmetric_product_of_curve(genus=1, power=5)
+torus_fifth = spaces.symmetric_product_of_surface(genus=1, power=5)
 assert sum(torus_fifth.f_vector()) == 1_797_894
 assert torus_fifth.cohomology(p=5).operation_rank(2, 1) == 1
 ```
@@ -131,8 +131,8 @@ and their performance envelope are recorded in
 
 ## Notebooks
 
-- [Symmetric products of algebraic curves](notebooks/symmetric_products_of_curves.ipynb)
-  develops the genus family at primes 3 and 5.
+- [Steenrod operations on symmetric products of surfaces](notebooks/symmetric_products_of_surfaces.ipynb)
+  develops the genus family at primes 2, 3, 5, and 7.
 - [Lens spaces](notebooks/lens_spaces.ipynb) separately develops the cyclic
   join quotients, their cell counts, Bocksteins, and reduced powers.
 

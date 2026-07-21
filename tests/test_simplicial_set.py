@@ -185,7 +185,7 @@ def test_symmetric_cube_of_torus_is_a_small_six_manifold_with_nonzero_p1():
 
 
 def test_symmetric_cube_of_genus_two_surface_matches_macdonald_betti_numbers():
-    symmetric_cube = spaces.symmetric_product_of_curve(2)
+    symmetric_cube = spaces.symmetric_product_of_surface(2)
     cohomology = symmetric_cube.cohomology(p=3)
 
     assert symmetric_cube.f_vector() == (

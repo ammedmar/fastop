@@ -50,7 +50,7 @@ finite simplicial sets, including compact quotients and symmetric products.
 
 - Compact one-vertex models of the closed orientable surface Σ_g have
   f-vector `(1, 6g - 3, 4g - 2)` for positive genus.
-- `symmetric_product_of_curve(genus, power=3)` exposes the complete family;
+- `symmetric_product_of_surface(genus, power=3)` exposes the complete family;
   the older surface-named constructor remains as an alias.
 - Symmetric powers are built directly from unordered simplex tuples rather
   than by constructing the ordered product and then quotienting it.
@@ -92,7 +92,7 @@ The example-search phase now feeds a small public API:
 - `DeltaComplex` is the compact face-map input for semi-simplicial models.
 - `FiniteGroupAction` packages graded permutation generators, can build them
   from cell maps, and exposes order and freeness checks.
-- `orientable_surface`, `symmetric_product_of_curve`, and `lens_space` are the
+- `orientable_surface`, `symmetric_product_of_surface`, and `lens_space` are the
   user-facing constructors for the two showcase families.
 - expensive Sym⁵(T²) and L¹¹(5) checks live in the opt-in `large` test tier;
   smaller ground truths stay in the routine suite.
