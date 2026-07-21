@@ -6,8 +6,8 @@ import pytest
 from fastop import SimplicialComplex, __version__, spaces
 
 
-def test_version_is_development_version():
-    assert __version__ == "0.1.0.dev0"
+def test_version_is_alpha_version():
+    assert __version__ == "0.1.0a1"
 
 
 def test_complex_generates_all_faces():

@@ -16,4 +16,5 @@ docstrings, but the workflow pages are the place to begin.
    quotients
    operations
    reference
+   releasing
    notes

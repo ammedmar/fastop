@@ -103,6 +103,8 @@ The example-search phase now feeds a small public API:
 - GitHub Actions verifies the routine suite on Python 3.10 through 3.14,
   builds the generated documentation, and validates source and wheel artifacts.
 
-The remaining work before a first alpha release is release administration:
-choose the alpha version, build and inspect distribution artifacts, publish to
-a test index, and exercise the installation on the supported Python versions.
+The package metadata and Trusted Publishing workflow are prepared for
+``0.1.0a1``. Remaining work is external release administration: create or
+identify the GitHub repository, configure its ``testpypi`` and ``pypi``
+environments and the matching Trusted Publishers, push the history, validate
+the candidate on TestPyPI, and publish the GitHub prerelease.

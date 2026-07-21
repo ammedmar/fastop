@@ -59,3 +59,8 @@ addopts = ["-m", "not large"]
 markers = [
   "large: memory-intensive mathematical regressions run only by explicit request",
 ]
+
+[tool.cibuildwheel]
+build = "cp310-* cp311-* cp312-* cp313-* cp314-*"
+skip = "*-musllinux_* *-win32 cp3??t-*"
+test-command = "python -c \"from fastop import spaces; assert spaces.lens_space(7, 3).cohomology(p=3).operation_rank(2, 1) == 1\""
