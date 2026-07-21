@@ -2,16 +2,8 @@
 
 [![CI](https://github.com/ammedmar/fastop/actions/workflows/ci.yml/badge.svg)](https://github.com/ammedmar/fastop/actions/workflows/ci.yml)
 
-`fastop` computes cohomology and Steenrod operations on finite simplicial
-models. It provides a common prime-field cohomology interface for simplicial
-complexes, Delta-complexes, and simplicial sets.
-
-The package includes:
-
-- cohomology over $\mathbf F_p$, with cocycle representatives and cup products;
-- Steenrod squares and odd-primary operations $P^r$ and $\beta P^r$;
-- products, suspensions, finite group actions, quotients, and symmetric powers;
-- compact face-map models suited to identifications and group-action quotients.
+`fastop` computes Steenrod operations on prime-field cohomology for finite
+simplicial models.
 
 `fastop` has no required runtime dependencies. An optional C extension
 accelerates core computations when a compiler is available.
@@ -37,13 +29,9 @@ assert u.operation(1) == u**3  # P^1(u) = u^3
 
 ## Documentation and examples
 
-The [Sphinx documentation](https://github.com/ammedmar/fastop/blob/main/docs/source/index.rst)
-describes the input models, cohomology interface, group actions, quotients,
-and Sage interoperability.
-
-The [notebooks](https://github.com/ammedmar/fastop/tree/main/notebooks) provide
-hands-on introductions and develop the larger computations on symmetric
-products of surfaces and lens spaces.
+The [documentation](https://github.com/ammedmar/fastop/blob/main/docs/source/index.rst)
+and [notebooks](https://github.com/ammedmar/fastop/tree/main/notebooks) provide a
+hands-on introduction and primary examples: symmetric products of surfaces and lens spaces.
 
 ## Development
 
