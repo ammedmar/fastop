@@ -17,4 +17,3 @@ docstrings, but the workflow pages are the place to begin.
    operations
    reference
    releasing
-   notes

@@ -30,7 +30,7 @@ cohomology.
 ```python
 H = spaces.complex_projective_space(3).cohomology(p=3)
 u = H.basis(2)[0]
-assert u.operation(1, algorithm="prime-three") == H.basis(6)[0]
+assert u.operation(1, algorithm="prime-three") == u**3
 
 M = spaces.moore_space(3).cohomology(p=3)
 a = M.basis(1)[0]
@@ -45,9 +45,6 @@ suspended = spaces.complex_projective_space(3).suspension(2)
 H = suspended.cohomology(p=3)
 assert H.operation_rank(4, 1) == 1
 ```
-
-The completed implementation program for face-map input, compact quotients,
-and the six-manifold search is recorded in [docs/roadmap.md](docs/roadmap.md).
 
 Finite Delta-complexes use dense face maps compatible with Sage's
 `DeltaComplex.cells()` output.  This permits loops, repeated faces, and other
@@ -122,12 +119,8 @@ assert torus_fifth.cohomology(p=5).operation_rank(2, 1) == 1
 ```
 
 Run `python benchmarks/showcase.py` for reproducible construction,
-cohomology, and operation timings on all showcase models. A reference run and
-the role of each example are recorded in [docs/showcase.md](docs/showcase.md).
-The genus expansion and its extended benchmark are described in
-[docs/symmetric-surfaces.md](docs/symmetric-surfaces.md). Prime-five results
-and their performance envelope are recorded in
-[docs/prime-five.md](docs/prime-five.md).
+cohomology, and operation timings on all showcase models. The mathematical
+results and their performance envelopes are recorded in the notebooks below.
 
 ## Notebooks
 
@@ -135,6 +128,11 @@ and their performance envelope are recorded in
   develops the genus family at primes 2, 3, 5, and 7.
 - [Lens spaces](notebooks/lens_spaces.ipynb) separately develops the cyclic
   join quotients, their cell counts, Bocksteins, and reduced powers.
+- [Data structures and cohomology](notebooks/data_structures_and_cohomology.ipynb)
+  introduces user-supplied models, cohomology classes, cup products, and
+  Steenrod operations.
+- [Products, quotients, and symmetric powers](notebooks/products_quotients_and_symmetric_powers.ipynb)
+  explains permutation actions, finite quotients, and size preflight.
 
 ## Development
 
@@ -145,9 +143,9 @@ python -m pip install .
 ```
 
 The C accelerator is optional; the package retains a pure-Python fallback if
-it cannot be compiled. The supported public models, constructors, quotient
-interface, and operation coverage are summarized in
-[docs/package-api.md](docs/package-api.md).
+it cannot be compiled. Canonical package documentation lives under
+`docs/source`; historical development records are tracked under `memos` and
+excluded from release distributions.
 
 The package-facing documentation is generated with Sphinx from the public
 docstrings and narrative sources:

@@ -3,8 +3,9 @@ include THIRD_PARTY_NOTICES.md
 include README.md
 include pyproject.toml
 include setup.py
-recursive-include benchmarks *.py
-recursive-include docs *.md *.py *.rst Makefile requirements.txt
-recursive-include notebooks *.ipynb
-global-exclude *-checkpoint.ipynb
+recursive-include docs *.py *.rst Makefile requirements.txt
 recursive-include tests *.py
+prune benchmarks
+prune memos
+prune notebooks
+prune docs/build
