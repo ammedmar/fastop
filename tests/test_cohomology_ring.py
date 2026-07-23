@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from fastop import spaces
+from fastop import SimplicialSet, spaces
 
 
 @pytest.mark.parametrize(
@@ -12,7 +12,7 @@ from fastop import spaces
     [
         spaces.complex_projective_space(3),
         spaces.complex_projective_space(3).as_delta_complex(),
-        spaces.minimal_simplicial_sphere(2).symmetric_power(3),
+        SimplicialSet.minimal_sphere(2).symmetric_power(3),
     ],
 )
 def test_top_reduced_power_is_cup_power_on_every_input_model(model):

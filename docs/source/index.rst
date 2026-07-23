@@ -11,9 +11,11 @@ docstrings, but the workflow pages are the place to begin.
    :maxdepth: 2
 
    getting-started
+   overview
    input-models
-   sage
-   quotients
+   conventions
    operations
+   quotients
+   examples
+   sage
    reference
-   releasing

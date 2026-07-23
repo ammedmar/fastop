@@ -1,4 +1,4 @@
-# Odd-primary showcase
+# Archived: odd-primary showcase
 
 The showcase combines familiar validation cases with compact models that
 exercise the new input formats. Every entry below is constructed and tested

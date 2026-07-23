@@ -29,9 +29,12 @@ assert u.operation(1) == u**3  # P^1(u) = u^3
 
 ## Documentation and examples
 
-The [documentation](https://github.com/ammedmar/fastop/blob/main/docs/source/index.rst)
-and [notebooks](https://github.com/ammedmar/fastop/tree/main/notebooks) provide a
-hands-on introduction and primary examples: symmetric products of surfaces and lens spaces.
+Begin with the
+[mathematical and package overview](https://github.com/ammedmar/fastop/blob/main/docs/source/overview.rst),
+then choose an [input model](https://github.com/ammedmar/fastop/blob/main/docs/source/input-models.rst)
+and see the [operation guide](https://github.com/ammedmar/fastop/blob/main/docs/source/operations.rst).
+The [notebooks](https://github.com/ammedmar/fastop/tree/main/notebooks) contain
+the longer examples on symmetric products of surfaces and lens spaces.
 
 ## Development
 

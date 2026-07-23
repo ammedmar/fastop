@@ -33,11 +33,6 @@ class SimplicialComplex:
         object.__setattr__(self, "facets", normalized)
         object.__setattr__(self, "_faces_by_dimension", self._build_faces())
 
-    @classmethod
-    def from_facets(cls, facets: Iterable[Iterable[int]]) -> "SimplicialComplex":
-        """Create a complex from maximal or non-maximal listed simplices."""
-        return cls(facets)
-
     @property
     def dimension(self) -> int:
         """Return the largest simplex dimension."""
@@ -49,8 +44,7 @@ class SimplicialComplex:
         return tuple(sorted({vertex for facet in self.facets for vertex in facet}))
 
     @property
-    def supports_vertex_algorithms(self) -> bool:
-        """Return whether cells carry globally comparable vertex sets."""
+    def _supports_vertex_algorithms(self) -> bool:
         return True
 
     def faces(
@@ -66,6 +60,13 @@ class SimplicialComplex:
     ) -> dict[int, frozenset[Simplex]] | frozenset[Simplex]:
         """Return simplices through the common finite-cell interface."""
         return self.faces(dimension)
+
+    def f_vector(self) -> tuple[int, ...]:
+        """Return the number of simplices in every nonnegative dimension."""
+        return tuple(
+            len(self._faces_by_dimension[degree])
+            for degree in range(self.dimension + 1)
+        )
 
     def face(self, degree: int, simplex: Simplex, index: int) -> Simplex:
         """Return the ``index``-th face of one simplex."""

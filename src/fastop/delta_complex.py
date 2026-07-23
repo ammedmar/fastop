@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Iterable, TYPE_CHECKING
 
-from fastop._group_action import (
+from fastop.group_action import (
     CellAction,
     FiniteGroupAction,
     cell_orbits,
@@ -54,16 +54,6 @@ class DeltaComplex:
         object.__setattr__(self, "face_maps", normalized)
 
     @classmethod
-    def from_face_maps(
-        cls,
-        face_maps: Iterable[Iterable[Iterable[int]]],
-        *,
-        check: bool = True,
-    ) -> "DeltaComplex":
-        """Create a Delta-complex from dense face-index tables."""
-        return cls(face_maps, check=check)
-
-    @classmethod
     def from_simplicial_complex(cls, complex_: "SimplicialComplex") -> "DeltaComplex":
         """Forget global vertices and retain the induced face maps."""
         cells = {
@@ -106,8 +96,7 @@ class DeltaComplex:
         return len(self.face_maps) - 1
 
     @property
-    def supports_vertex_algorithms(self) -> bool:
-        """Return whether cells carry globally comparable vertex sets."""
+    def _supports_vertex_algorithms(self) -> bool:
         return False
 
     def cells(self, dimension: int | None = None):

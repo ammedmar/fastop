@@ -1,4 +1,4 @@
-# Odd-primary Steenrod operation internalization
+# Archived: odd-primary Steenrod operation internalization
 
 This memo records how the useful formula-building path from `oddp` was
 internalized into `fastop`. The work is complete: installed `fastop` does not

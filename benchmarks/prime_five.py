@@ -24,7 +24,7 @@ def peak_memory_mib() -> float:
 
 
 def run(genus: int, *, max_cells: int) -> None:
-    surface = spaces.minimal_simplicial_surface(genus)
+    surface = spaces.orientable_surface(genus)
     predicted = surface.symmetric_power_f_vector(5)
     total_cells = sum(predicted)
 

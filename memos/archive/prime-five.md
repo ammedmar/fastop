@@ -1,4 +1,4 @@
-# Prime-five computations
+# Archived: prime-five computations
 
 The prime-five phase keeps the degree-two source class but moves the target
 from degree 6 to degree 10:
@@ -60,7 +60,7 @@ Three changes make the torus case feasible:
 The preflight method predicts the next model before allocating it:
 
 ```python
-surface = spaces.minimal_simplicial_surface(2)
+surface = spaces.orientable_surface(2)
 assert sum(surface.symmetric_power_f_vector(5)) == 414_092_094
 ```
 

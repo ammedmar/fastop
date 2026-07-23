@@ -112,8 +112,8 @@ def test_symmetric_power_validates_power():
 
 
 def test_symmetric_power_cell_counts_do_not_require_model_construction():
-    sphere = spaces.minimal_simplicial_surface(0)
-    torus = spaces.minimal_simplicial_surface(1)
+    sphere = spaces.orientable_surface(0)
+    torus = spaces.orientable_surface(1)
 
     assert sphere.symmetric_power_f_vector(5) == (
         1,
@@ -130,12 +130,12 @@ def test_symmetric_power_cell_counts_do_not_require_model_construction():
     )
     assert sum(torus.symmetric_power_f_vector(5)) == 1_797_894
     assert sum(
-        spaces.minimal_simplicial_surface(2).symmetric_power_f_vector(5)
+        spaces.orientable_surface(2).symmetric_power_f_vector(5)
     ) == 414_092_094
 
 
 def test_symmetric_power_materializes_only_requested_degrees():
-    model = spaces.minimal_simplicial_sphere(2).symmetric_power(7)
+    model = SimplicialSet.minimal_sphere(2).symmetric_power(7)
 
     assert model._labels == {}
     assert sum(model.f_vector()) == 13_478_264
@@ -194,13 +194,13 @@ def test_minimal_surface_models(genus, f_vector, betti):
 
 def test_minimal_surface_validates_genus():
     with pytest.raises(TypeError, match="integer"):
-        spaces.minimal_simplicial_surface(True)
+        spaces.orientable_surface(True)
     with pytest.raises(ValueError, match="nonnegative"):
-        spaces.minimal_simplicial_surface(-1)
+        spaces.orientable_surface(-1)
 
 
 def test_symmetric_cube_of_torus_is_a_small_six_manifold_with_nonzero_p1():
-    symmetric_cube = spaces.symmetric_product_of_torus(3)
+    symmetric_cube = spaces.symmetric_product_of_surface(1, 3)
     cohomology = symmetric_cube.cohomology(p=3)
 
     assert symmetric_cube.f_vector() == (1, 19, 126, 380, 572, 420, 120)

@@ -1,4 +1,4 @@
-# Symmetric products of surfaces
+# Archived: symmetric products of surfaces
 
 For a closed orientable surface Σ_g, the package constructs a compact
 one-vertex simplicial-set model and then forms its symmetric powers directly.

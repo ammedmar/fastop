@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use fastop in research, please cite the software and the relevant mathematical paper."
+title: "fastop: Fast computations of cohomology operations"
+type: software
+authors:
+  - family-names: Medina-Mardones
+    given-names: Anibal M.
+  - family-names: Cantero-Morán
+    given-names: Federico
+version: 0.1.0a1
+license: MIT
+repository-code: "https://github.com/ammedmar/fastop"
+url: "https://github.com/ammedmar/fastop"
+keywords:
+  - cohomology
+  - Steenrod operations
+  - simplicial complexes
+  - simplicial sets

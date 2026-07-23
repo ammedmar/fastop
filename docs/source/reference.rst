@@ -20,7 +20,7 @@ Core models
    :members:
    :special-members: __init__
 
-.. autoclass:: fastop.SymmetricPowerSimplicialSet
+.. autoclass:: fastop.SimplexReference
    :members:
 
 Finite quotients

@@ -1,4 +1,4 @@
-# A prime-seven computation
+# Archived: a prime-seven computation
 
 The first reduced power at the prime seven raises the degree-two generator
 of complex projective space to its seventh power:

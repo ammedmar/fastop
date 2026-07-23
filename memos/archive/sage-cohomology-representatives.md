@@ -1,4 +1,4 @@
-# Sage cohomology representatives and Steenrod-square warm-up
+# Archived: Sage cohomology representatives and Steenrod-square warm-up
 
 This memo records how Sage produces explicit cohomology representatives and
 how its existing mod-2 Steenrod-square implementation uses them. Sage is a

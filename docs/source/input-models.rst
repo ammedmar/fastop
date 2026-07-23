@@ -89,7 +89,9 @@ Delta-complex or a built-in small model:
    assert sphere.f_vector() == (1, 0, 1)
    assert projective_space_model.cohomology(p=3).operation_rank(2, 1) == 1
 
-``from_delta_complex`` freely adds degeneracies to a face-map model.
+``from_delta_complex`` freely adds degeneracies to a Delta-complex model.
+Pass normalized face references directly to ``SimplicialSet(...)`` only for
+specialized constructions.
 ``cartesian_product`` and ``symmetric_power`` build normalized simplicial-set
 models. Before a large symmetric power, call ``symmetric_power_f_vector`` to
 predict its size without constructing it.

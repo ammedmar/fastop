@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT / "src"))
 if (ROOT.parent / "oddp").exists():
     sys.path.insert(0, str(ROOT.parent / "oddp"))
 
-from fastop import spaces  # noqa: E402
+from fastop import SimplicialSet, spaces  # noqa: E402
 
 
 def median_time(function, repeats: int):
@@ -98,12 +98,12 @@ def cases():
         ),
         "symmetric-sphere": (
             "Symmetric cube Sym^3(S2) = CP3",
-            lambda: spaces.minimal_simplicial_sphere(2).symmetric_power(3),
+            lambda: SimplicialSet.minimal_sphere(2).symmetric_power(3),
             (("P1: H2 -> H6", 2, 1, False),),
         ),
         "symmetric-torus": (
             "Symmetric cube Sym^3(T2)",
-            lambda: spaces.symmetric_product_of_torus(3),
+            lambda: spaces.symmetric_product_of_surface(1, 3),
             (("P1: H2 -> H6", 2, 1, False),),
         ),
     }

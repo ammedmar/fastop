@@ -1,5 +1,5 @@
-Releasing
-=========
+Maintainer release procedure
+============================
 
 The first planned public version is ``0.1.0a1``. Releases use
 ``.github/workflows/release.yml`` and PyPI Trusted Publishing, so no long-lived

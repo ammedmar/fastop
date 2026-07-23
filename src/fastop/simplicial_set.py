@@ -8,7 +8,7 @@ from itertools import combinations, combinations_with_replacement, product
 from math import comb
 from typing import Iterable, TYPE_CHECKING
 
-from fastop._group_action import (
+from fastop.group_action import (
     CellAction,
     FiniteGroupAction,
     cell_orbits,
@@ -106,16 +106,6 @@ class SimplicialSet:
             self._validate_identities()
 
     @classmethod
-    def from_face_maps(
-        cls,
-        face_maps: Iterable[Iterable[Iterable[SimplicialFace]]],
-        *,
-        check: bool = True,
-    ) -> "SimplicialSet":
-        """Create a finite simplicial set from faces of nondegenerate cells."""
-        return cls(face_maps, check=check)
-
-    @classmethod
     def from_delta_complex(cls, complex_: "DeltaComplex") -> "SimplicialSet":
         """Freely add degeneracies to a finite Delta-complex."""
         return cls(complex_.face_maps, check=False)
@@ -190,8 +180,7 @@ class SimplicialSet:
         return len(self.face_maps) - 1
 
     @property
-    def supports_vertex_algorithms(self) -> bool:
-        """Return whether cells carry globally comparable vertex sets."""
+    def _supports_vertex_algorithms(self) -> bool:
         return False
 
     def cells(self, dimension: int | None = None):
@@ -629,8 +618,7 @@ class SymmetricPowerSimplicialSet:
         return self._dimension
 
     @property
-    def supports_vertex_algorithms(self) -> bool:
-        """Return whether cells carry globally comparable vertex sets."""
+    def _supports_vertex_algorithms(self) -> bool:
         return False
 
     def cells(self, dimension: int | None = None):

@@ -128,17 +128,7 @@ def lens_space(dimension: int, order: int = 3) -> DeltaComplex:
     return cover.quotient(action, require_free=True)
 
 
-def minimal_simplicial_sphere(dimension: int) -> SimplicialSet:
-    """Return the one-vertex simplicial-set model of a positive sphere."""
-    return SimplicialSet.minimal_sphere(dimension)
-
-
-def minimal_simplicial_torus() -> SimplicialSet:
-    """Return a one-vertex, six-cell simplicial-set model of the torus."""
-    return minimal_simplicial_surface(1)
-
-
-def minimal_simplicial_surface(genus: int) -> SimplicialSet:
+def orientable_surface(genus: int) -> SimplicialSet:
     """Return a compact one-vertex model of an orientable closed surface.
 
     For positive genus, the standard ``4 * genus``-gon presentation is
@@ -150,7 +140,7 @@ def minimal_simplicial_surface(genus: int) -> SimplicialSet:
     if genus < 0:
         raise ValueError("genus must be nonnegative")
     if genus == 0:
-        return minimal_simplicial_sphere(2)
+        return SimplicialSet.minimal_sphere(2)
 
     boundary_word = []
     for handle in range(genus):
@@ -186,7 +176,7 @@ def minimal_simplicial_surface(genus: int) -> SimplicialSet:
     ]))
 
 
-def minimal_simplicial_nonorientable_surface(crosscaps: int) -> SimplicialSet:
+def nonorientable_surface(crosscaps: int) -> SimplicialSet:
     r"""Return a compact model of a closed non-orientable surface.
 
     The surface is the connected sum of ``crosscaps`` copies of
@@ -201,7 +191,7 @@ def minimal_simplicial_nonorientable_surface(crosscaps: int) -> SimplicialSet:
         raise ValueError("crosscaps must be positive")
     if crosscaps == 1:
         degenerate_edge = SimplexReference(0, 0, (0, 0))
-        return SimplicialSet.from_face_maps([
+        return SimplicialSet([
             [()],
             [(0, 0)],
             [(0, degenerate_edge, 0)],
@@ -235,29 +225,12 @@ def minimal_simplicial_nonorientable_surface(crosscaps: int) -> SimplicialSet:
     ]))
 
 
-def orientable_surface(genus: int) -> SimplicialSet:
-    """Return a compact simplicial-set model of the genus-``genus`` surface."""
-    return minimal_simplicial_surface(genus)
-
-
-def nonorientable_surface(crosscaps: int) -> SimplicialSet:
-    """Return the closed surface with the requested number of crosscaps."""
-    return minimal_simplicial_nonorientable_surface(crosscaps)
-
-
-def symmetric_product_of_torus(
-    power: int,
-) -> SimplicialSet | SymmetricPowerSimplicialSet:
-    """Return the ``power``-fold symmetric product of the two-torus."""
-    return symmetric_product_of_surface(1, power)
-
-
 def symmetric_product_of_surface(
     genus: int,
     power: int = 3,
 ) -> SimplicialSet | SymmetricPowerSimplicialSet:
     """Return a symmetric power of the closed orientable genus-``genus`` surface."""
-    return minimal_simplicial_surface(genus).symmetric_power(power)
+    return orientable_surface(genus).symmetric_power(power)
 
 
 def symmetric_product_of_nonorientable_surface(
@@ -265,7 +238,7 @@ def symmetric_product_of_nonorientable_surface(
     power: int = 2,
 ) -> SimplicialSet | SymmetricPowerSimplicialSet:
     """Return a symmetric power of a closed non-orientable surface."""
-    return minimal_simplicial_nonorientable_surface(crosscaps).symmetric_power(power)
+    return nonorientable_surface(crosscaps).symmetric_power(power)
 
 
 def moore_space(order: int = 3) -> SimplicialComplex:

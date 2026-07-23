@@ -73,7 +73,7 @@ def cochain_operation_vector_from_universal(
             target_faces,
             cochain,
             universal,
-            vertex_simplices=complex_.supports_vertex_algorithms,
+            vertex_simplices=complex_._supports_vertex_algorithms,
         )
     if algorithm in {"all_targets", "direct", "all-target"}:
         result = evaluate_all_targets_on_model(
@@ -142,7 +142,7 @@ def _auto_evaluation_algorithm(
 
 
 def _require_vertex_simplices(complex_, algorithm: str) -> None:
-    if not complex_.supports_vertex_algorithms:
+    if not complex_._supports_vertex_algorithms:
         raise ValueError(
             f"{algorithm!r} requires an abstract simplicial complex; "
             "use 'all_targets' for face-map input"
@@ -296,7 +296,7 @@ def evaluate_all_targets_on_model(
     universal: UniversalOperation,
 ):
     """Evaluate universal terms using the model's local face restrictions."""
-    if complex_.supports_vertex_algorithms:
+    if complex_._supports_vertex_algorithms:
         return evaluate_all_targets(target_cells, cochain, universal)
 
     tensor_terms = tuple(universal.terms.items())

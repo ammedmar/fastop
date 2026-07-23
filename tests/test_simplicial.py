@@ -11,12 +11,13 @@ def test_version_is_alpha_version():
 
 
 def test_complex_generates_all_faces():
-    complex_ = SimplicialComplex.from_facets([(2, 0, 1)])
+    complex_ = SimplicialComplex([(2, 0, 1)])
     assert complex_.dimension == 2
     assert complex_.vertices == (0, 1, 2)
     assert complex_.faces(0) == frozenset({(0,), (1,), (2,)})
     assert complex_.faces(1) == frozenset({(0, 1), (0, 2), (1, 2)})
     assert complex_.faces(2) == frozenset({(0, 1, 2)})
+    assert complex_.f_vector() == (3, 3, 1)
 
 
 def test_suspension_joins_with_a_zero_sphere():

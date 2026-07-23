@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
-
 from fastop._cochain_evaluation import (
     cochain_operation_vector_from_universal,
     evaluate_all_targets_mod_2,
@@ -22,10 +20,6 @@ from fastop._linear_algebra import (
     vector_scale,
 )
 from fastop._universal import universal_operation
-
-if TYPE_CHECKING:
-    from fastop.simplicial import Simplex, SimplicialComplex
-
 
 @dataclass(frozen=True)
 class _DegreeData:
@@ -56,11 +50,11 @@ class _DegreeDataCache(dict[int, _DegreeData]):
 
 
 class PrimeFieldCohomology:
-    """Cohomology of a finite simplicial complex over ``F_p``."""
+    """Cohomology of a supported finite simplicial model over ``F_p``."""
 
     def __init__(
         self,
-        complex_: "SimplicialComplex",
+        complex_,
         p: int = 2,
         *,
         reduced: bool = False,
@@ -390,7 +384,7 @@ class PrimeFieldCohomology:
         source_data = self._degree_data[degree]
         cocycle_vector = self.cocycle_vector(element, degree)
         support = [source_data.faces[index] for index in cocycle_vector]
-        if self.complex.supports_vertex_algorithms:
+        if self.complex._supports_vertex_algorithms:
             target_support = evaluate_source_mod_2(
                 target_degree + 1,
                 support,
@@ -564,12 +558,6 @@ class PrimeFieldCohomology:
         self._coboundary_columns[degree] = columns
         return columns
 
-    def _build_degree_data(self) -> dict[int, _DegreeData]:
-        return {
-            degree: self._degree_data[degree]
-            for degree in range(self.dimension + 1)
-        }
-
     def _image_and_cycles(self, degree: int) -> tuple[list[Vector], list[Vector]]:
         cached_image = self._image_basis_by_degree.get(degree)
         cached_cycles = self._cycles_by_degree.get(degree)
@@ -741,17 +729,6 @@ class PrimeFieldCohomologyElement:
                 else:
                     terms.append(f"{coefficient}*{basis}")
         return " + ".join(terms)
-
-
-Mod2Cohomology = PrimeFieldCohomology
-Mod2CohomologyElement = PrimeFieldCohomologyElement
-
-
-def _codimension_one_faces(simplex: "Simplex", p: int) -> tuple[tuple[int, "Simplex"], ...]:
-    return tuple(
-        (((-1) ** index) % p, simplex[:index] + simplex[index + 1 :])
-        for index in range(len(simplex))
-    )
 
 
 def _vector_sort_key(vector: Vector) -> tuple[tuple[int, int], ...]:

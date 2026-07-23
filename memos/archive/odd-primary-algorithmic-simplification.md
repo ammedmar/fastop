@@ -1,4 +1,4 @@
-# Odd-primary algorithmic simplification proposal
+# Archived: odd-primary algorithmic simplification proposal
 
 > **Implementation status (July 2026).** The tuple/dictionary universal
 > builder described here is now implemented in
