@@ -21,7 +21,7 @@ def test_complex_generates_all_faces():
 
 
 def test_suspension_joins_with_a_zero_sphere():
-    circle = spaces.sphere(1)
+    circle = SimplicialComplex.simplex_boundary(1)
     suspended = circle.suspension()
 
     assert suspended.dimension == 2
@@ -32,7 +32,7 @@ def test_suspension_joins_with_a_zero_sphere():
 
 
 def test_suspension_rejects_invalid_iteration_counts():
-    circle = spaces.sphere(1)
+    circle = SimplicialComplex.simplex_boundary(1)
 
     with pytest.raises(TypeError, match="integer"):
         circle.suspension(1.5)
@@ -71,7 +71,7 @@ def test_cohomology_accepts_only_supported_conventions():
 def test_basic_mod_two_betti_numbers():
     interval = SimplicialComplex([(0, 1)])
     circle = SimplicialComplex([(0, 1), (0, 2), (1, 2)])
-    sphere = spaces.sphere(2)
+    sphere = SimplicialComplex.simplex_boundary(2)
 
     assert interval.cohomology().betti_numbers() == {0: 1}
     assert interval.cohomology(reduced=True).betti_numbers() == {}
@@ -80,8 +80,8 @@ def test_basic_mod_two_betti_numbers():
 
 
 def test_mod_p_betti_numbers_for_odd_primes():
-    assert spaces.sphere(2).cohomology(p=3).betti_numbers() == {0: 1, 2: 1}
-    assert spaces.complex_projective_plane().cohomology(p=5).betti_numbers() == {
+    assert SimplicialComplex.simplex_boundary(2).cohomology(p=3).betti_numbers() == {0: 1, 2: 1}
+    assert spaces.complex_projective_space(2).cohomology(p=5).betti_numbers() == {
         0: 1,
         2: 1,
         4: 1,
@@ -90,7 +90,7 @@ def test_mod_p_betti_numbers_for_odd_primes():
 
 def test_cohomology_object_exposes_prime():
     for p in (2, 3, 5):
-        cohomology = spaces.complex_projective_plane().cohomology(p=p)
+        cohomology = spaces.complex_projective_space(2).cohomology(p=p)
         basis_element = cohomology.basis(2)[0]
 
         assert cohomology.p == p
@@ -100,7 +100,7 @@ def test_cohomology_object_exposes_prime():
 
 
 def test_mod_p_class_arithmetic_uses_plain_int_coefficients():
-    cohomology = spaces.sphere(2).cohomology(p=3)
+    cohomology = SimplicialComplex.simplex_boundary(2).cohomology(p=3)
     x = cohomology.basis(2)[0]
 
     assert (x + x)._coordinates == {2: {0: 2}}
@@ -109,7 +109,7 @@ def test_mod_p_class_arithmetic_uses_plain_int_coefficients():
 
 
 def test_steenrod_square_spelling_is_only_available_mod_two():
-    cohomology = spaces.complex_projective_plane().cohomology(p=3)
+    cohomology = spaces.complex_projective_space(2).cohomology(p=3)
     x = cohomology.basis(2)[0]
 
     with pytest.raises(NotImplementedError, match="p=2"):
@@ -117,7 +117,7 @@ def test_steenrod_square_spelling_is_only_available_mod_two():
 
 
 def test_bockstein_operations_are_only_available_at_odd_primes():
-    cohomology = spaces.complex_projective_plane().cohomology()
+    cohomology = spaces.complex_projective_space(2).cohomology()
     x = cohomology.basis(2)[0]
 
     with pytest.raises(NotImplementedError, match="odd prime"):
@@ -172,7 +172,7 @@ def test_odd_primary_computed_non_top_formula_does_not_import_oddp(monkeypatch):
 
 
 def test_odd_primary_vanishing_target_degree_does_not_require_oddp(monkeypatch):
-    cohomology = spaces.complex_projective_plane().cohomology(p=3)
+    cohomology = spaces.complex_projective_space(2).cohomology(p=3)
     x = cohomology.basis(2)[0]
     monkeypatch.delitem(sys.modules, "oddp", raising=False)
 
@@ -181,8 +181,8 @@ def test_odd_primary_vanishing_target_degree_does_not_require_oddp(monkeypatch):
 
 
 def test_operation_instability_bounds_are_enforced_before_evaluation():
-    mod_two = spaces.real_projective_plane().cohomology(p=2)
-    odd = spaces.complex_projective_plane().cohomology(p=3)
+    mod_two = spaces.real_projective_space(2).cohomology(p=2)
+    odd = spaces.complex_projective_space(2).cohomology(p=3)
 
     assert mod_two._satisfies_instability_bound(1, 1, bockstein=False)
     assert not mod_two._satisfies_instability_bound(1, 2, bockstein=False)
@@ -201,7 +201,7 @@ def test_basis_elements_have_python_style_squares():
 
 
 def test_homological_convention_uses_negative_operation_indices():
-    cohomology = spaces.real_projective_plane().cohomology(convention=-1)
+    cohomology = spaces.real_projective_space(2).cohomology(convention=-1)
     x = cohomology.basis(1)[0]
 
     assert x.sq(-1) == cohomology.basis(2)[0]
@@ -209,7 +209,7 @@ def test_homological_convention_uses_negative_operation_indices():
 
 
 def test_projective_plane_has_nonzero_sq1_rank():
-    cohomology = spaces.real_projective_plane().cohomology()
+    cohomology = spaces.real_projective_space(2).cohomology()
 
     assert cohomology.betti_numbers() == {0: 1, 1: 1, 2: 1}
     assert cohomology.operation_rank(1, 1) == 1
@@ -225,7 +225,7 @@ def test_projective_3_space_betti_numbers_and_sq1():
 
 
 def test_complex_projective_plane_betti_numbers_and_sq2():
-    cohomology = spaces.complex_projective_plane().cohomology()
+    cohomology = spaces.complex_projective_space(2).cohomology()
 
     assert cohomology.betti_numbers() == {0: 1, 2: 1, 4: 1}
     assert cohomology.operation_rank(2, 2) == 1
@@ -236,7 +236,7 @@ def test_complex_projective_space_catalog_includes_cp2_and_cp3():
     cp2 = spaces.complex_projective_space(2)
     cp3 = spaces.complex_projective_space(3)
 
-    assert cp2 == spaces.complex_projective_plane()
+    assert cp2 == spaces.complex_projective_space(2)
     assert cp3.dimension == 6
     assert len(cp3.vertices) == 18
     assert len(cp3.facets) == 622

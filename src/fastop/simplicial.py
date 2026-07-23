@@ -33,6 +33,19 @@ class SimplicialComplex:
         object.__setattr__(self, "facets", normalized)
         object.__setattr__(self, "_faces_by_dimension", self._build_faces())
 
+    @classmethod
+    def standard_simplex(cls, dimension: int) -> "SimplicialComplex":
+        """Return the standard ``dimension``-simplex."""
+        _validate_dimension(dimension)
+        return cls([tuple(range(dimension + 1))])
+
+    @classmethod
+    def simplex_boundary(cls, dimension: int) -> "SimplicialComplex":
+        """Return the boundary of the standard ``(dimension + 1)``-simplex."""
+        _validate_dimension(dimension)
+        vertices = tuple(range(dimension + 2))
+        return cls(combinations(vertices, dimension + 1))
+
     @property
     def dimension(self) -> int:
         """Return the largest simplex dimension."""
@@ -126,3 +139,10 @@ class SimplicialComplex:
                 dimension = size - 1
                 faces.setdefault(dimension, set()).update(combinations(facet, size))
         return {dimension: frozenset(sorted(values)) for dimension, values in faces.items()}
+
+
+def _validate_dimension(dimension: int) -> None:
+    if not isinstance(dimension, int) or isinstance(dimension, bool):
+        raise TypeError("dimension must be an integer")
+    if dimension < 0:
+        raise ValueError("dimension must be nonnegative")

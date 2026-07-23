@@ -3,8 +3,8 @@ import pytest
 from fastop import DeltaComplex, SimplexReference, SimplicialSet, spaces
 
 
-def test_minimal_sphere_uses_normalized_chains():
-    sphere = SimplicialSet.minimal_sphere(2)
+def test_one_vertex_sphere_uses_normalized_chains():
+    sphere = SimplicialSet.sphere(2)
 
     assert sphere.f_vector() == (1, 0, 1)
     assert sphere.face(2, 0, 0) is None
@@ -12,7 +12,7 @@ def test_minimal_sphere_uses_normalized_chains():
 
 
 def test_a_degenerate_face_can_have_a_nondegenerate_later_face():
-    sphere = SimplicialSet.minimal_sphere(2)
+    sphere = SimplicialSet.sphere(2)
     top = sphere.nondegenerate(2, 0)
     degenerate_edge = sphere.face_reference(top, 0)
 
@@ -72,8 +72,8 @@ def test_sage_adapter_retains_degenerate_faces():
     assert sphere.cohomology(p=3).betti_numbers() == {0: 1, 2: 1}
 
 
-def test_cartesian_cube_of_minimal_sphere_has_known_symmetric_quotient():
-    sphere = SimplicialSet.minimal_sphere(2)
+def test_cartesian_cube_of_one_vertex_sphere_has_known_symmetric_quotient():
+    sphere = SimplicialSet.sphere(2)
     cube = sphere.cartesian_product(sphere, sphere)
     symmetric_cube = sphere.symmetric_power(3)
 
@@ -135,7 +135,7 @@ def test_symmetric_power_cell_counts_do_not_require_model_construction():
 
 
 def test_symmetric_power_materializes_only_requested_degrees():
-    model = SimplicialSet.minimal_sphere(2).symmetric_power(7)
+    model = SimplicialSet.sphere(2).symmetric_power(7)
 
     assert model._labels == {}
     assert sum(model.f_vector()) == 13_478_264
@@ -148,7 +148,7 @@ def test_symmetric_power_materializes_only_requested_degrees():
     ("crosscaps", "f_vector"),
     [(1, (1, 1, 1)), (2, (1, 3, 2)), (3, (1, 6, 4))],
 )
-def test_minimal_nonorientable_surfaces(crosscaps, f_vector):
+def test_compact_nonorientable_surfaces(crosscaps, f_vector):
     surface = spaces.nonorientable_surface(crosscaps)
 
     assert surface.f_vector() == f_vector
@@ -164,7 +164,7 @@ def test_minimal_nonorientable_surfaces(crosscaps, f_vector):
 
 
 def test_symmetric_cube_of_projective_plane_is_rp6():
-    model = spaces.symmetric_product_of_nonorientable_surface(1, power=3)
+    model = spaces.nonorientable_surface(1).symmetric_power(3)
     mod_two = model.cohomology(p=2)
     mod_three = model.cohomology(p=3)
 
@@ -185,14 +185,14 @@ def test_symmetric_cube_of_projective_plane_is_rp6():
         (3, (1, 15, 10), {0: 1, 1: 6, 2: 1}),
     ],
 )
-def test_minimal_surface_models(genus, f_vector, betti):
+def test_compact_surface_models(genus, f_vector, betti):
     surface = spaces.orientable_surface(genus)
 
     assert surface.f_vector() == f_vector
     assert surface.cohomology(p=3).betti_numbers() == betti
 
 
-def test_minimal_surface_validates_genus():
+def test_orientable_surface_validates_genus():
     with pytest.raises(TypeError, match="integer"):
         spaces.orientable_surface(True)
     with pytest.raises(ValueError, match="nonnegative"):
@@ -200,7 +200,7 @@ def test_minimal_surface_validates_genus():
 
 
 def test_symmetric_cube_of_torus_is_a_small_six_manifold_with_nonzero_p1():
-    symmetric_cube = spaces.symmetric_product_of_surface(1, 3)
+    symmetric_cube = spaces.orientable_surface(1).symmetric_power(3)
     cohomology = symmetric_cube.cohomology(p=3)
 
     assert symmetric_cube.f_vector() == (1, 19, 126, 380, 572, 420, 120)
@@ -217,7 +217,7 @@ def test_symmetric_cube_of_torus_is_a_small_six_manifold_with_nonzero_p1():
 
 
 def test_symmetric_cube_of_genus_two_surface_matches_macdonald_betti_numbers():
-    symmetric_cube = spaces.symmetric_product_of_surface(2)
+    symmetric_cube = spaces.orientable_surface(2).symmetric_power(3)
     cohomology = symmetric_cube.cohomology(p=3)
 
     assert symmetric_cube.f_vector() == (
@@ -242,7 +242,7 @@ def test_symmetric_cube_of_genus_two_surface_matches_macdonald_betti_numbers():
 
 
 def test_symmetric_fifth_power_of_sphere_is_cp5_at_prime_five():
-    symmetric_fifth = spaces.symmetric_product_of_surface(0, power=5)
+    symmetric_fifth = spaces.orientable_surface(0).symmetric_power(5)
     cohomology = symmetric_fifth.cohomology(p=5)
 
     assert symmetric_fifth.f_vector() == (

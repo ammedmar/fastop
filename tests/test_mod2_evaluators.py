@@ -24,7 +24,7 @@ def test_source_mod_2_evaluator_ignores_non_targets():
 
 
 def test_source_mod_2_evaluator_matches_cp2_square_projection():
-    cohomology = spaces.complex_projective_plane().cohomology()
+    cohomology = spaces.complex_projective_space(2).cohomology()
     source = cohomology.basis(2)[0]
     target_data = cohomology._degree_data[4]
     source_data = cohomology._degree_data[2]

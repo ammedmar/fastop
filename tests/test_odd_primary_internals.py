@@ -2,7 +2,7 @@ import pytest
 import sys
 import types
 
-from fastop import spaces
+from fastop import SimplicialComplex, spaces
 import fastop.cohomology as cohomology_module
 import fastop._cochain_evaluation as cochain_evaluation_module
 from fastop._cochain_evaluation import (
@@ -38,14 +38,14 @@ def _universal_kwargs(p, r, source_degree, bockstein=False):
 
 
 def test_cohomology_uses_public_odd_primary_degree_conventions():
-    cohomology = spaces.sphere(2).cohomology(p=5)
+    cohomology = SimplicialComplex.simplex_boundary(2).cohomology(p=5)
 
     assert cohomology._odd_primary_missing_vertices(2, bockstein=True) == 17
     assert cohomology._operation_target_degree(3, 2, bockstein=True) == 20
 
 
 def test_cohomology_caches_universal_operations(monkeypatch):
-    cohomology = spaces.simplex(2).cohomology(p=3)
+    cohomology = SimplicialComplex.standard_simplex(2).cohomology(p=3)
     calls = []
 
     def fake_universal_operation(**kwargs):
@@ -99,7 +99,7 @@ def test_cohomology_builds_boundary_data_only_for_requested_degree():
 
 
 def test_reference_oddp_cochain_bridge_returns_fastop_sparse_vector(monkeypatch):
-    complex_ = spaces.complex_projective_plane()
+    complex_ = spaces.complex_projective_space(2)
     target_faces = sorted(complex_.faces(4))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     target = target_faces[0]
@@ -134,7 +134,7 @@ def test_reference_oddp_cochain_bridge_returns_fastop_sparse_vector(monkeypatch)
 
 
 def test_computed_formula_uses_universal_data_and_native_evaluator():
-    complex_ = spaces.complex_projective_plane()
+    complex_ = spaces.complex_projective_space(2)
     target_faces = sorted(complex_.faces(2))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     target = target_faces[0]
@@ -571,7 +571,7 @@ def test_source_focused_evaluator_allows_repeated_source_factors():
 
 
 def test_reference_vector_from_universal_uses_native_evaluator():
-    complex_ = spaces.complex_projective_plane()
+    complex_ = spaces.complex_projective_space(2)
     target_faces = sorted(complex_.faces(2))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     target = target_faces[0]
@@ -599,7 +599,7 @@ def test_reference_vector_from_universal_uses_native_evaluator():
 
 
 def test_reference_vector_from_universal_can_use_target_omissions():
-    complex_ = spaces.complex_projective_plane()
+    complex_ = spaces.complex_projective_space(2)
     target_faces = sorted(complex_.faces(2))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     target = target_faces[0]
@@ -628,7 +628,7 @@ def test_reference_vector_from_universal_can_use_target_omissions():
 
 
 def test_source_mod_3_name_is_restricted_to_prime_three():
-    complex_ = spaces.complex_projective_plane()
+    complex_ = spaces.complex_projective_space(2)
     target_faces = sorted(complex_.faces(2))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     universal = UniversalOperation(
@@ -652,7 +652,7 @@ def test_source_mod_3_name_is_restricted_to_prime_three():
 
 
 def test_reference_vector_from_universal_can_use_all_targets():
-    complex_ = spaces.complex_projective_plane()
+    complex_ = spaces.complex_projective_space(2)
     target_faces = sorted(complex_.faces(4))
     target_face_to_index = {face: i for i, face in enumerate(target_faces)}
     target = target_faces[0]

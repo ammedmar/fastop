@@ -32,7 +32,7 @@ def expected_betti_numbers(genus: int) -> tuple[int, ...]:
 
 def run(genus: int, *, full_cohomology: bool) -> None:
     start = time.perf_counter()
-    model = spaces.symmetric_product_of_surface(genus)
+    model = spaces.orientable_surface(genus).symmetric_power(3)
     build_seconds = time.perf_counter() - start
     expected = expected_betti_numbers(genus)
 

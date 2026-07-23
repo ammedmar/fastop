@@ -12,17 +12,17 @@ from fastop import SimplicialComplex, spaces
 
 EXAMPLES = [
     ("circle", [(0, 1), (0, 2), (1, 2)], 1, 1),
-    ("sphere", list(spaces.sphere(2).facets), 2, 1),
-    ("real_projective_plane", list(spaces.real_projective_plane().facets), 1, 1),
+    ("sphere", list(SimplicialComplex.simplex_boundary(2).facets), 2, 1),
+    ("real_projective_plane", list(spaces.real_projective_space(2).facets), 1, 1),
     ("real_projective_3_space", list(spaces.real_projective_space(3).facets), 1, 1),
-    ("complex_projective_plane", list(spaces.complex_projective_plane().facets), 2, 2),
+    ("complex_projective_plane", list(spaces.complex_projective_space(2).facets), 2, 2),
 ]
 
 COHOMOLOGY_EXAMPLES = [
-    ("sphere", list(spaces.sphere(2).facets)),
-    ("real_projective_plane", list(spaces.real_projective_plane().facets)),
+    ("sphere", list(SimplicialComplex.simplex_boundary(2).facets)),
+    ("real_projective_plane", list(spaces.real_projective_space(2).facets)),
     ("real_projective_3_space", list(spaces.real_projective_space(3).facets)),
-    ("complex_projective_plane", list(spaces.complex_projective_plane().facets)),
+    ("complex_projective_plane", list(spaces.complex_projective_space(2).facets)),
 ]
 
 

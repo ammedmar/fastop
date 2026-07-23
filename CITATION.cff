@@ -3,10 +3,10 @@ message: "If you use fastop in research, please cite the software and the releva
 title: "fastop: Fast computations of cohomology operations"
 type: software
 authors:
-  - family-names: Medina-Mardones
-    given-names: Anibal M.
   - family-names: Cantero-Morán
     given-names: Federico
+  - family-names: Medina-Mardones
+    given-names: Anibal M.
 version: 0.1.0a1
 license: MIT
 repository-code: "https://github.com/ammedmar/fastop"

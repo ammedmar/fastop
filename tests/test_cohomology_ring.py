@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from fastop import SimplicialSet, spaces
+from fastop import SimplicialComplex, SimplicialSet, spaces
 
 
 @pytest.mark.parametrize(
@@ -12,7 +12,7 @@ from fastop import SimplicialSet, spaces
     [
         spaces.complex_projective_space(3),
         spaces.complex_projective_space(3).as_delta_complex(),
-        SimplicialSet.minimal_sphere(2).symmetric_power(3),
+        SimplicialSet.sphere(2).symmetric_power(3),
     ],
 )
 def test_top_reduced_power_is_cup_power_on_every_input_model(model):
@@ -53,15 +53,15 @@ def test_cup_product_is_associative_and_distributive():
 
 
 def test_cup_product_rejects_classes_from_another_parent():
-    first = spaces.sphere(1).cohomology(p=3)
-    second = spaces.sphere(1).cohomology(p=3)
+    first = SimplicialComplex.simplex_boundary(1).cohomology(p=3)
+    second = SimplicialComplex.simplex_boundary(1).cohomology(p=3)
 
     with pytest.raises(ValueError, match="belong"):
         first.cup_product(first.one(), second.one())
 
 
 def test_reduced_cohomology_has_no_unit():
-    cohomology = spaces.sphere(2).cohomology(p=3, reduced=True)
+    cohomology = SimplicialComplex.simplex_boundary(2).cohomology(p=3, reduced=True)
 
     with pytest.raises(ValueError, match="no multiplicative unit"):
         cohomology.one()

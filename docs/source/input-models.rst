@@ -83,7 +83,7 @@ Delta-complex or a built-in small model:
 
    from fastop import SimplicialSet
 
-   sphere = SimplicialSet.minimal_sphere(2)
+   sphere = SimplicialSet.sphere(2)
    projective_space_model = sphere.symmetric_power(3)
 
    assert sphere.f_vector() == (1, 0, 1)

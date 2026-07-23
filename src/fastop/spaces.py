@@ -1,8 +1,8 @@
-"""Small catalog of finite simplicial complexes."""
+"""Catalogue models for named mathematical spaces."""
 
 from __future__ import annotations
 
-from itertools import combinations, product
+from itertools import product
 
 from fastop.delta_complex import DeltaComplex
 from fastop.group_action import FiniteGroupAction
@@ -10,26 +10,7 @@ from fastop.simplicial import SimplicialComplex
 from fastop.simplicial_set import (
     SimplexReference,
     SimplicialSet,
-    SymmetricPowerSimplicialSet,
 )
-
-
-def simplex(dimension: int) -> SimplicialComplex:
-    """Return the standard ``dimension``-simplex."""
-    _validate_dimension(dimension)
-    return SimplicialComplex([tuple(range(dimension + 1))])
-
-
-def sphere(dimension: int) -> SimplicialComplex:
-    """Return the boundary of the standard ``(dimension + 1)``-simplex."""
-    _validate_dimension(dimension)
-    vertices = tuple(range(dimension + 2))
-    return SimplicialComplex(combinations(vertices, dimension + 1))
-
-
-def real_projective_plane() -> SimplicialComplex:
-    """Return Sage's six-vertex triangulation of real projective plane."""
-    return SimplicialComplex(_REAL_PROJECTIVE_PLANE_FACETS)
 
 
 def real_projective_space(dimension: int) -> SimplicialComplex:
@@ -39,22 +20,17 @@ def real_projective_space(dimension: int) -> SimplicialComplex:
     two and three.
     """
     if dimension == 2:
-        return real_projective_plane()
+        return SimplicialComplex(_REAL_PROJECTIVE_PLANE_FACETS)
     if dimension == 3:
         return SimplicialComplex(_REAL_PROJECTIVE_3_SPACE_FACETS)
     raise NotImplementedError("only real projective spaces of dimensions 2 and 3 are included")
-
-
-def complex_projective_plane() -> SimplicialComplex:
-    """Return Sage's nine-vertex triangulation of complex projective plane."""
-    return SimplicialComplex(_COMPLEX_PROJECTIVE_PLANE_FACETS)
 
 
 def complex_projective_space(dimension: int) -> SimplicialComplex:
     """Return a catalog triangulation of complex projective ``dimension``-space."""
     _validate_dimension(dimension)
     if dimension == 2:
-        return complex_projective_plane()
+        return SimplicialComplex(_COMPLEX_PROJECTIVE_PLANE_FACETS)
     if dimension == 3:
         return SimplicialComplex(_COMPLEX_PROJECTIVE_3_SPACE_FACETS)
     raise NotImplementedError("only complex projective spaces of dimensions 2 and 3 are included")
@@ -140,7 +116,7 @@ def orientable_surface(genus: int) -> SimplicialSet:
     if genus < 0:
         raise ValueError("genus must be nonnegative")
     if genus == 0:
-        return SimplicialSet.minimal_sphere(2)
+        return SimplicialSet.sphere(2)
 
     boundary_word = []
     for handle in range(genus):
@@ -181,7 +157,7 @@ def nonorientable_surface(crosscaps: int) -> SimplicialSet:
 
     The surface is the connected sum of ``crosscaps`` copies of
     :math:`\mathbb{R}P^2`.  Its polygon word is
-    :math:`a_1a_1\cdots a_ha_h`.  The projective plane uses its minimal
+    :math:`a_1a_1\cdots a_ha_h`.  The projective plane uses a compact
     one-vertex, one-edge, one-triangle simplicial-set model; larger words are
     triangulated by a fan.
     """
@@ -223,22 +199,6 @@ def nonorientable_surface(crosscaps: int) -> SimplicialSet:
         [(0, 0) for _ in range(edge_count)],
         triangles,
     ]))
-
-
-def symmetric_product_of_surface(
-    genus: int,
-    power: int = 3,
-) -> SimplicialSet | SymmetricPowerSimplicialSet:
-    """Return a symmetric power of the closed orientable genus-``genus`` surface."""
-    return orientable_surface(genus).symmetric_power(power)
-
-
-def symmetric_product_of_nonorientable_surface(
-    crosscaps: int,
-    power: int = 2,
-) -> SimplicialSet | SymmetricPowerSimplicialSet:
-    """Return a symmetric power of a closed non-orientable surface."""
-    return nonorientable_surface(crosscaps).symmetric_power(power)
 
 
 def moore_space(order: int = 3) -> SimplicialComplex:

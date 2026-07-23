@@ -150,8 +150,8 @@ class SimplicialSet:
         return cls(face_maps)
 
     @classmethod
-    def minimal_sphere(cls, dimension: int) -> "SimplicialSet":
-        """Return the one-vertex minimal simplicial model of ``S^dimension``."""
+    def sphere(cls, dimension: int) -> "SimplicialSet":
+        """Return a one-vertex normalized simplicial-set model of ``S^dimension``."""
         if not isinstance(dimension, int) or isinstance(dimension, bool):
             raise TypeError("dimension must be an integer")
         if dimension < 1:

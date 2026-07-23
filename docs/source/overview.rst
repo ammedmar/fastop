@@ -52,8 +52,35 @@ representatives, cup products, operation matrices, and operation ranks.
 The :mod:`fastop.spaces` module contains standard examples and geometric
 families.  In particular, ``orientable_surface`` and
 ``nonorientable_surface`` return compact simplicial-set models, while
-``symmetric_product_of_surface`` and ``lens_space`` build the main example
-families used by the project.
+``lens_space`` builds the main quotient family used by the project.
+
+Where constructors live
+-----------------------
+
+Elementary constructors belong to the representation they create.  For
+example,
+
+.. code-block:: python
+
+   from fastop import SimplicialComplex, SimplicialSet
+
+   triangulated_sphere = SimplicialComplex.simplex_boundary(2)
+   one_vertex_sphere = SimplicialSet.sphere(2)
+
+These objects model the same topological space but retain different
+combinatorial information.  The class name makes that representation choice
+explicit.
+
+The :mod:`fastop.spaces` catalogue is reserved for named mathematical spaces
+whose finite model is supplied by the package, such as projective spaces,
+lens spaces, Moore spaces, and closed surfaces.  Constructions already
+available on a model are composed as methods:
+
+.. code-block:: python
+
+   from fastop import spaces
+
+   symmetric_product = spaces.orientable_surface(2).symmetric_power(3)
 
 How the source tree reflects the mathematics
 --------------------------------------------
@@ -103,5 +130,5 @@ Continue with :doc:`input-models` to choose a representation, then
 Authors
 -------
 
-``fastop`` is developed by Anibal M. Medina-Mardones and Federico
-Cantero-Morán.
+``fastop`` is developed by Federico Cantero-Morán and Anibal M.
+Medina-Mardones.

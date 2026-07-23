@@ -98,12 +98,12 @@ def cases():
         ),
         "symmetric-sphere": (
             "Symmetric cube Sym^3(S2) = CP3",
-            lambda: SimplicialSet.minimal_sphere(2).symmetric_power(3),
+            lambda: SimplicialSet.sphere(2).symmetric_power(3),
             (("P1: H2 -> H6", 2, 1, False),),
         ),
         "symmetric-torus": (
             "Symmetric cube Sym^3(T2)",
-            lambda: spaces.symmetric_product_of_surface(1, 3),
+            lambda: spaces.orientable_surface(1).symmetric_power(3),
             (("P1: H2 -> H6", 2, 1, False),),
         ),
     }

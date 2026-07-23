@@ -20,7 +20,7 @@ def peak_memory_mib() -> float:
 
 def main() -> None:
     start = time.perf_counter()
-    model = spaces.symmetric_product_of_surface(0, power=7)
+    model = spaces.orientable_surface(0).symmetric_power(7)
     build_seconds = time.perf_counter() - start
     predicted = model.f_vector()
     print("Sym^7(S^2) = CP^7")

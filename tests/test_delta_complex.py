@@ -1,6 +1,6 @@
 import pytest
 
-from fastop import DeltaComplex, FiniteGroupAction, spaces
+from fastop import DeltaComplex, FiniteGroupAction, SimplicialComplex, spaces
 
 
 def test_face_map_circle_keeps_repeated_faces_and_cancels_its_boundary():
@@ -27,7 +27,7 @@ def test_one_vertex_torus_has_the_expected_odd_prime_cohomology():
 
 
 def test_abstract_complex_conversion_preserves_cohomology_and_operations():
-    rp2 = spaces.real_projective_plane()
+    rp2 = spaces.real_projective_space(2)
     cp3 = spaces.complex_projective_space(3)
     delta_rp2 = rp2.as_delta_complex()
     delta_cp3 = cp3.as_delta_complex()
@@ -52,7 +52,7 @@ def test_face_restrictions_support_nontrivial_odd_primary_formulas():
 
 
 def test_face_restriction_uses_local_positions():
-    triangle = spaces.simplex(2).as_delta_complex()
+    triangle = SimplicialComplex.standard_simplex(2).as_delta_complex()
     top = triangle.cells(2)[0]
     edge_indices = {
         positions: triangle.restrict(2, top, positions)
