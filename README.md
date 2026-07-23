@@ -48,3 +48,5 @@ regressions are available separately through `python -m pytest -m large`.
 
 `fastop` is distributed under the
 [MIT license](https://github.com/ammedmar/fastop/blob/main/LICENSE).
+
+Authors: Anibal M. Medina-Mardones and Federico Cantero-Morán.

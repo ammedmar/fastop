@@ -2,7 +2,7 @@
 
 This module contains only the combinatorial formula-building path needed by
 ``fastop``.  It is derived from the MIT-licensed ``oddp`` project by Federico
-Cantero-Moran and Anibal M. Medina-Mardones; see ``THIRD_PARTY_NOTICES.md``.
+Cantero-Morán and Anibal M. Medina-Mardones; see ``THIRD_PARTY_NOTICES.md``.
 The implementation deliberately uses immutable faces and ordinary mappings
 instead of importing ``oddp``'s resolution object hierarchy.
 """

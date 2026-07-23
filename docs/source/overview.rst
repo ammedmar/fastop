@@ -99,3 +99,9 @@ rather than part of the basic mathematical workflow.
 
 Continue with :doc:`input-models` to choose a representation, then
 :doc:`operations` for cohomology products and Steenrod operations.
+
+Authors
+-------
+
+``fastop`` is developed by Anibal M. Medina-Mardones and Federico
+Cantero-Morán.

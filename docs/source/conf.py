@@ -10,7 +10,8 @@ sys.path.insert(0, str(ROOT / "src"))
 from fastop import __version__
 
 project = "fastop"
-author = "Anibal M. Medina-Mardones"
+author = "Anibal M. Medina-Mardones and Federico Cantero-Morán"
+copyright = "2026, Anibal M. Medina-Mardones and Federico Cantero-Morán"
 release = __version__
 
 extensions = [

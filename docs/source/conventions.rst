@@ -58,7 +58,7 @@ References and citation
 -----------------------
 
 The odd-primary universal formulas are adapted from the ``oddp`` project and
-the accompanying work of Federico Cantero-Moran and Anibal M.
+the accompanying work of Federico Cantero-Morán and Anibal M.
 Medina-Mardones, *Steenrod operations and Tate resolutions*.  The mod-two
 evaluation is based on the cup-``i`` approach developed for fast computation
 of Steenrod squares.  See the repository's ``CITATION.cff`` and

@@ -12,6 +12,7 @@ license = "MIT"
 license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md"]
 authors = [
   {name = "Anibal M. Medina-Mardones", email = "ammedmar@gmail.com"},
+  {name = "Federico Cantero-Morán"},
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
